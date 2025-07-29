@@ -3,26 +3,31 @@ import fs from 'fs';
 
 export const config = {
   api: {
-    bodyParser: false, // Required for formidable
+    bodyParser: false,
   },
 };
 
 export default async function handler(req, res) {
-  const form = new formidable.IncomingForm({ maxFileSize: 10 * 1024 * 1024 }); // 10MB
+  const form = new formidable.IncomingForm({ maxFileSize: 10 * 1024 * 1024 });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      return res.status(500).json({ error: 'Upload failed', details: err });
+      console.error('Formidable error:', err);
+      return res.status(500).json({ error: 'File upload error', details: err });
     }
 
-    const file = files.file;
-    const data = fs.readFileSync(file[0].filepath);
-    const base64 = data.toString('base64');
+    try {
+      const uploadedFile = files.file?.[0];
+      const fileBuffer = fs.readFileSync(uploadedFile.filepath);
+      const base64 = fileBuffer.toString('base64');
 
-    // You can forward this to RunPod here or return it
-    res.status(200).json({
-      filename: file[0].originalFilename,
-      base64: base64.slice(0, 100) + '...', // Preview only
-    });
+      res.status(200).json({
+        filename: uploadedFile.originalFilename,
+        base64: base64.substring(0, 100) + '...',
+      });
+    } catch (readErr) {
+      console.error('File read error:', readErr);
+      return res.status(500).json({ error: 'File read error', details: readErr });
+    }
   });
 }
