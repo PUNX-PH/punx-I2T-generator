@@ -1,5 +1,5 @@
-import formidable from 'formidable';
-import fs from 'fs';
+import formidable from "formidable";
+import fs from "fs";
 
 export const config = {
   api: {
@@ -8,26 +8,25 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  const form = new formidable.IncomingForm({ maxFileSize: 10 * 1024 * 1024 });
+  const form = new formidable.IncomingForm({
+    uploadDir: "/tmp",
+    keepExtensions: true,
+  });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error('Formidable error:', err);
-      return res.status(500).json({ error: 'File upload error', details: err });
+      console.error(err);
+      return res.status(500).json({ error: "Upload failed." });
     }
 
-    try {
-      const uploadedFile = files.file?.[0];
-      const fileBuffer = fs.readFileSync(uploadedFile.filepath);
-      const base64 = fileBuffer.toString('base64');
+    const file = files.file;
+    console.log("Uploaded file:", file);
 
-      res.status(200).json({
-        filename: uploadedFile.originalFilename,
-        base64: base64.substring(0, 100) + '...',
-      });
-    } catch (readErr) {
-      console.error('File read error:', readErr);
-      return res.status(500).json({ error: 'File read error', details: readErr });
-    }
+    // OPTIONAL: Read file, encode it, or forward it elsewhere
+    const filePath = file[0].filepath;
+    const fileBuffer = fs.readFileSync(filePath);
+    const base64 = fileBuffer.toString("base64");
+
+    return res.status(200).json({ message: "Upload successful!", base64 });
   });
 }
