@@ -1,32 +1,47 @@
-import formidable from "formidable";
-import fs from "fs";
+import formidable from 'formidable';
+import fs from 'fs';
+import path from 'path';
 
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // Required for formidable
   },
 };
 
 export default async function handler(req, res) {
-  const form = new formidable.IncomingForm({
-    uploadDir: "/tmp",
-    keepExtensions: true,
-  });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Only POST allowed' });
+  }
+
+  const form = new formidable.IncomingForm({ multiples: false });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Upload failed." });
+      console.error('Form parse error:', err);
+      return res.status(500).json({ error: 'Error parsing form' });
     }
 
-    const file = files.file;
-    console.log("Uploaded file:", file);
+    const file = files.image;
+    if (!file) return res.status(400).json({ error: 'No image uploaded' });
 
-    // OPTIONAL: Read file, encode it, or forward it elsewhere
-    const filePath = file[0].filepath;
-    const fileBuffer = fs.readFileSync(filePath);
-    const base64 = fileBuffer.toString("base64");
+    const fileStream = fs.createReadStream(file.filepath);
 
-    return res.status(200).json({ message: "Upload successful!", base64 });
+    // Forward image to JupyterLab server endpoint
+    try {
+      const response = await fetch('http://g8jtq4h2gagsmr-8888/upload-endpoint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': `attachment; filename="${file.originalFilename}"`,
+        },
+        body: fileStream,
+      });
+
+      const result = await response.json();
+      res.status(200).json({ message: 'Uploaded to JupyterLab', result });
+    } catch (error) {
+      console.error('Error uploading to Jupyter:', error);
+      res.status(500).json({ error: 'Upload to JupyterLab failed' });
+    }
   });
 }
