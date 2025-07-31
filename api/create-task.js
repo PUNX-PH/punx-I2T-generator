@@ -11,11 +11,11 @@ export default async function handler(req, res) {
     prompt,          // string
     negative_prompt, // string
     input_image,     // string (image file name)
-    base_url         // string, e.g., 's61u83w3t2vryv' (you must provide it)
+    runpod_id         // string, e.g., 's61u83w3t2vryv' (you must provide it)
   } = req.body;
 
-  if (!prompt || !negative_prompt || !input_image || !base_url) {
-    res.status(400).json({ error: "Missing required params: prompt, negative_prompt, input_image, base_url" });
+  if (!prompt || !negative_prompt || !input_image || !runpod_id) {
+    res.status(400).json({ error: "Missing required params: prompt, negative_prompt, input_image, runpod_id" });
     return;
   }
 
@@ -383,7 +383,7 @@ export default async function handler(req, res) {
 
   // 4. Call the Runpod/ComfyUI workflow API
   try {
-    const response = await fetch(`https://${base_url}-8188.proxy.runpod.net/prompt`, {
+    const response = await fetch(`https://${runpod_id}-8188.proxy.runpod.net/prompt`, {
       method: 'POST',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
