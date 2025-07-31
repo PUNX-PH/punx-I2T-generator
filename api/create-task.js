@@ -394,14 +394,11 @@ export default async function handler(req, res) {
       res.status(response.status).json({ error });
       return;
     }
-
     const data = await response.json();
-
     // Format/cut down response as you want, for example just send what is useful
     res.status(200).json({
-      prompt_id: data.prompt_id,
-      number: data.number,
-      random_seed: randomSeed
+      task_id: data.prompt_id,
+      seed: randomSeed
       // Add more fields if needed
     });
 
