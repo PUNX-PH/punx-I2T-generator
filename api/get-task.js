@@ -4,13 +4,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { taskId, base_url } = req.query;
-  if (!taskId || !base_url) {
-    return res.status(400).json({ error: 'Missing taskId or base_url' });
+  const { taskId, runpod_id } = req.query;
+  if (!taskId || !runpod_id) {
+    return res.status(400).json({ error: 'Missing taskId or runpod_id' });
   }
 
   try {
-    const runpodRes = await fetch(`https://${base_url}-8188.proxy.runpod.net/history/${taskId}`, {
+    const runpodRes = await fetch(`https://${runpod_id}-8188.proxy.runpod.net/history/${taskId}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     const filename = outputGif?.filename;
     let video_url = null;
     if (filename) {
-    video_url = `https://${base_url}-8188.proxy.runpod.net/view?filename=output/${filename}`;
+    video_url = `https://${runpod_id}-8188.proxy.runpod.net/view?filename=output/${filename}`;
     }
 
     // Timestamps: status->messages arrays
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
         timestamp_success
     });
 
-    
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
