@@ -1,10 +1,10 @@
 import formidable from "formidable";
 import FormData from "form-data";
-import fs from "fs";
+import fs from "fs/promises"; // We use fs.promises for reading as buffer
 
 export const config = {
   api: {
-    bodyParser: false, // Disables Next.js' default body parser to handle form-data
+    bodyParser: false,
   },
 };
 
@@ -14,34 +14,38 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Parse incoming form-data
+  // Parse form-data using formidable (need a Promise version)
   const form = new formidable.IncomingForm();
 
-  // Promisify for async/await
-  const parseForm = () =>
-    new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve({ fields, files });
-      });
+  const data = await new Promise((resolve, reject) => {
+    form.parse(req, (err, fields, files) => {
+      if (err) reject(err);
+      else resolve({ fields, files });
     });
+  });
+
+  const runpod_id = data.fields.runpod_id;
+  const file = data.files.file;
+
+  if (!runpod_id || !file) {
+    res.status(400).json({ error: "runpod_id (text field) and file (file field) are required" });
+    return;
+  }
+
+  // Read file as Buffer
+  let fileBuffer;
+  try {
+    fileBuffer = await fs.readFile(file.filepath);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to read file buffer.", detail: err.message });
+    return;
+  }
+
+  // Prepare FormData for forwarding
+  const formData = new FormData();
+  formData.append("file", fileBuffer, file.originalFilename);
 
   try {
-    const { fields, files } = await parseForm();
-    const runpod_id = fields.runpod_id;
-    const file = files.file;
-
-    // Validate
-    if (!runpod_id || !file) {
-      res.status(400).json({ error: "runpod_id (text field) and file (file field) are required" });
-      return;
-    }
-
-    // Prepare FormData for forwarding
-    const formData = new FormData();
-    formData.append("file", fs.createReadStream(file.filepath), file.originalFilename);
-
-    // Forward to Runpod ComfyUI API
     const apiRes = await fetch(
       `https://${runpod_id}-7860.proxy.runpod.net/upload-image`,
       {
@@ -57,14 +61,13 @@ export default async function handler(req, res) {
       return;
     }
 
-    // (Assumption) The actual filename on ComfyUI will match the uploaded name.
     const filename = file.originalFilename;
     const relative_path = `/ComfyUI/input/${filename}`;
 
     res.status(200).json({
       message: "Image uploaded successfully.",
       filename: filename,
-      relative_path: relative_path
+      relative_path: relative_path,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
