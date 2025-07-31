@@ -30,10 +30,12 @@ export default async function handler(req, res) {
     // Prompt text: node 265
     const promptText = entry?.prompt?.[2]?.[2]?.["265"]?.inputs?.text;
 
-    // Filename and path: outputs->80->gifs[0]
     const outputGif = entry?.outputs?.["80"]?.gifs?.[0];
     const filename = outputGif?.filename;
-    const filepath = outputGif?.fullpath;
+    let video_url = null;
+    if (filename) {
+    video_url = `https://${base_url}-8188.proxy.runpod.net/view?filename=output/${filename}`;
+    }
 
     // Timestamps: status->messages arrays
     const statusMsgs = entry?.status?.messages || [];
@@ -44,15 +46,16 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      taskId,
-      prompt: promptText,
-      filename,
-      filepath,
-      status: 'Complete',
-      timestamp_start,
-      timestamp_success
+        taskId,
+        prompt: promptText,
+        filename,
+        video_url,
+        status: 'Complete',
+        timestamp_start,
+        timestamp_success
     });
 
+    
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
