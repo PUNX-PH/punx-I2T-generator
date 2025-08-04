@@ -14,52 +14,41 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const busboy = new Busboy({ headers: req.headers });
-  let runpodId = null;
-  let imageFile = null;
-  let imageFilename = null;
+  const busboy = Busboy({ headers: req.headers });
+  let runpodId;
+  let imageBuffer = [];
+  let imageFilename;
 
-  const buffers = [];
-
-  busboy.on("field", (fieldname, val) => {
-    if (fieldname === "runpod_id") {
-      runpodId = val;
-    }
+  busboy.on("field", (name, value) => {
+    if (name === "runpod_id") runpodId = value;
   });
 
-  busboy.on("file", (fieldname, file, filename) => {
+  busboy.on("file", (name, file, filename) => {
     imageFilename = filename;
-
-    file.on("data", (data) => {
-      buffers.push(data);
-    });
-
+    file.on("data", (data) => imageBuffer.push(data));
     file.on("end", () => {
-      imageFile = Buffer.concat(buffers);
+      imageBuffer = Buffer.concat(imageBuffer);
     });
   });
 
   busboy.on("finish", async () => {
-    if (!runpodId || !imageFile) {
-      return res.status(400).json({ message: "Missing runpod_id or image" });
+    if (!runpodId || !imageBuffer || !imageFilename) {
+      return res.status(400).json({ message: "Missing fields" });
     }
 
     const formData = new FormData();
     const bufferStream = new stream.PassThrough();
-    bufferStream.end(imageFile);
+    bufferStream.end(imageBuffer);
     formData.append("image", bufferStream, imageFilename);
 
     try {
       const response = await axios.post(
         `https://${runpodId}-7860.proxy.runpod.net/upload-image`,
         formData,
-        {
-          headers: formData.getHeaders(),
-        }
+        { headers: formData.getHeaders() }
       );
 
       const { filename, relative_path } = response.data;
-
       return res.status(200).json({
         message: "Uploaded successfully.",
         filename,
@@ -68,7 +57,7 @@ export default async function handler(req, res) {
     } catch (err) {
       return res.status(500).json({
         message: "Upload failed",
-        error: err.message,
+        error: err.response?.data || err.message,
       });
     }
   });
