@@ -1,47 +1,52 @@
-import formidable from 'formidable';
-import fs from 'fs';
-import path from 'path';
+import formidable from "formidable";
+import fs from "fs";
+import FormData from "form-data";
+import axios from "axios";
 
 export const config = {
   api: {
-    bodyParser: false, // Required for formidable
+    bodyParser: false, // Disables default body parser to use formidable
   },
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Only POST allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const form = new formidable.IncomingForm({ multiples: false });
+  const form = new formidable.IncomingForm();
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error('Form parse error:', err);
-      return res.status(500).json({ error: 'Error parsing form' });
+      return res.status(500).json({ message: "Form parsing error" });
     }
 
-    const file = files.image;
-    if (!file) return res.status(400).json({ error: 'No image uploaded' });
+    const runpodId = fields.runpod_id;
+    const imageFile = files.image;
 
-    const fileStream = fs.createReadStream(file.filepath);
+    if (!runpodId || !imageFile) {
+      return res.status(400).json({ message: "Missing runpod_id or image" });
+    }
 
-    // Forward image to JupyterLab server endpoint
     try {
-      const response = await fetch('http://g8jtq4h2gagsmr-8888/upload-endpoint', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'Content-Disposition': `attachment; filename="${file.originalFilename}"`,
-        },
-        body: fileStream,
+      const formData = new FormData();
+      formData.append("image", fs.createReadStream(imageFile.filepath), imageFile.originalFilename);
+
+      const runpodUrl = `https://${runpodId}-7860.proxy.runpod.net/upload-image`;
+
+      const response = await axios.post(runpodUrl, formData, {
+        headers: formData.getHeaders(),
       });
 
-      const result = await response.json();
-      res.status(200).json({ message: 'Uploaded to JupyterLab', result });
+      const { filename, relative_path } = response.data;
+
+      return res.status(200).json({
+        message: "Uploaded successfully.",
+        filename,
+        path: relative_path,
+      });
     } catch (error) {
-      console.error('Error uploading to Jupyter:', error);
-      res.status(500).json({ error: 'Upload to JupyterLab failed' });
+      return res.status(500).json({ message: "Upload failed", error: error.message });
     }
   });
 }
