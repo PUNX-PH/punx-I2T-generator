@@ -54,16 +54,13 @@
       formData.append("file", file); // key must be 'file'
 
       try {
-        const res = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
+        const res = await fetch("/api/upload", {
           method: "POST",
           body: formData,
         });
 
         const data = await res.json();
-
-        if (!data.filename) {
-          throw new Error("Filename missing in response.");
-        }
+        if (!data.filename) throw new Error("Filename missing in response.");
 
         uploadedFilename = data.filename;
         alert("Image uploaded successfully: " + uploadedFilename);
@@ -82,7 +79,7 @@
       const duration = parseInt(document.getElementById("duration").value);
 
       try {
-        const res = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
+        const res = await fetch("/api/create-task", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -95,10 +92,7 @@
         });
 
         const data = await res.json();
-
-        if (!data.taskId) {
-          throw new Error("taskId missing in response.");
-        }
+        if (!data.taskId) throw new Error("taskId missing in response.");
 
         currentTaskId = data.taskId;
         alert("Task created. Waiting for video...");
@@ -113,7 +107,7 @@
 
     async function checkTask(taskId, runpodId) {
       try {
-        const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
+        const res = await fetch(`/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
         const data = await res.json();
 
         if (data.status === "Complete") {
