@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     const formData = new FormData();
     const bufferStream = new stream.PassThrough();
     bufferStream.end(imageBuffer);
-    formData.append("image", bufferStream, imageFilename);
+    formData.append("file", bufferStream, imageFilename);
 
     try {
       const response = await axios.post(
