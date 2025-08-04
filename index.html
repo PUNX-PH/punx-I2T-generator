@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Image to Video Generator</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
@@ -17,13 +17,16 @@
 <body>
   <div class="container">
     <h2>Image to Video Generator</h2>
+
     <label>Upload Image</label>
-    <input type="file" id="imageInput" accept="image/*">
+    <input type="file" id="imageInput" accept="image/*" />
+    
     <label>Runpod ID</label>
-    <input type="text" id="runpodIdInput" placeholder="Enter runpod ID">
+    <input type="text" id="runpodIdInput" placeholder="Enter runpod ID" />
 
     <label>Prompt</label>
     <textarea id="promptInput">Make the person in the image fly up into the sky, passing through clouds with wind blowing around them.</textarea>
+
     <label>Negative Prompt</label>
     <textarea id="negativePromptInput">bad anatomy, blurry, multiple heads</textarea>
 
@@ -34,7 +37,6 @@
     </select>
 
     <button onclick="handleSubmit()">Generate Video</button>
-
     <div id="videoList"></div>
   </div>
 
@@ -83,17 +85,20 @@
       console.log("Creating task with body:", body);
 
       try {
-        const response = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
+        const response = await fetch("https://punx-i2-t-generator.vercel.app/api/create-task", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
 
-        const data = await response.json();
-        console.log("Create Task Response:", data);
+        const text = await response.text();
+        console.log("Raw task response:", text);
+
+        const data = JSON.parse(text);
+        console.log("Parsed task data:", data);
 
         if (!response.ok) {
-          alert("Failed to create task: " + (data.message || "Server Error"));
+          alert("Task creation failed: " + (data.message || "Server Error"));
         }
 
         currentTaskId = data.taskId;
@@ -150,7 +155,7 @@
           clearInterval(interval);
           displayVideo(result.video_url);
         } else {
-          console.log("Checking task status: " + result.status);
+          console.log("Checking task status:", result.status);
         }
       }, 5000);
     }
