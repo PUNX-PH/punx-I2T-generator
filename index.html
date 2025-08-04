@@ -45,30 +45,37 @@
     let currentTaskId = "";
     let pollingInterval;
 
-    async function uploadImage() {
-      const fileInput = document.getElementById('imageInput');
-      const file = fileInput.files[0];
-      if (!file) return alert("Please select an image.");
+   async function uploadImage() {
+    const fileInput = document.getElementById('imageInput');
+    const file = fileInput.files[0];
+    if (!file) return alert("Please select an image.");
 
-      const formData = new FormData();
-      formData.append("file", file); // key must be 'file'
+    const formData = new FormData();
+    formData.append("file", file); // key must be 'file'
 
-      try {
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
+    try {
+        const res = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
+        method: "POST",
+        body: formData,
         });
 
-        const data = await res.json();
-        if (!data.filename) throw new Error("Filename missing in response.");
+        const text = await res.text(); // 🔍 get raw text first
+        console.log("Upload response (raw):", text);
+
+        const data = JSON.parse(text); // 🔄 then try parsing manually
+
+        if (!data.filename) {
+        throw new Error("Filename missing in response.");
+        }
 
         uploadedFilename = data.filename;
         alert("Image uploaded successfully: " + uploadedFilename);
-      } catch (err) {
+    } catch (err) {
         console.error("Upload failed:", err);
         alert("Upload failed: " + err.message);
-      }
     }
+    }
+
 
     async function createTask() {
       if (!uploadedFilename) return alert("Please upload an image first.");
