@@ -127,7 +127,7 @@
 
     async function checkTask(taskId, runpodId, container) {
       try {
-        const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?task_id=${taskId}&runpod_id=${runpodId}`);
+        const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
         const data = await res.json();
         console.log("Check task result:", data);
 
