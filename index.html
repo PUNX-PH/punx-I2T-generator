@@ -101,7 +101,7 @@
           alert("Task creation failed: " + (data.message || "Server Error"));
         }
 
-        currentTaskId = data.taskId;
+        currentTaskId = data.task_id;
         return data;
       } catch (err) {
         console.error("Create task error:", err);
@@ -137,10 +137,8 @@
       uploadImage(runpodId, imageFile).then(success => {
         if (success) {
           createTask(prompt, negativePrompt, runpodId, duration).then(task => {
-            if (task.taskId) {
-              pollTask(task.taskId, runpodId);
-            } else {
-              alert("Task creation did not return a valid taskId.");
+            if (task.task_id) {
+            pollTask(task.task_id, runpodId);
             }
           });
         }
