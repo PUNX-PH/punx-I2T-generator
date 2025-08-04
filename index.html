@@ -1,154 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Image to Video Generator</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 30px auto; padding: 20px; }
-    input, select, textarea, button { width: 100%; padding: 10px; margin: 10px 0; }
-    button { background: #1d4ed8; color: white; border: none; cursor: pointer; }
-    button:hover { background: #2563eb; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+    .container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, select, textarea, button { width: 100%; margin-top: 10px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+    button { background-color: #007BFF; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
     video { width: 100%; margin-top: 10px; }
-    .video-item { margin-top: 20px; }
+    .video-item { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
   </style>
 </head>
 <body>
-  <h1>Image to Video Generator</h1>
+  <div class="container">
+    <h2>Image to Video Generator</h2>
+    <label>Upload Image</label>
+    <input type="file" id="imageInput" accept="image/*">
+    <label>Runpod ID</label>
+    <input type="text" id="runpodIdInput" placeholder="Enter runpod ID">
 
-  <!-- ✅ Upload Form -->
-  <form id="uploadForm" enctype="multipart/form-data">
-    <label>Upload Image:</label>
-    <input type="file" name="file" id="imageInput" accept="image/*" />
-    <button type="submit">Upload</button>
-  </form>
+    <label>Prompt</label>
+    <textarea id="promptInput">Make the person in the image fly up into the sky, passing through clouds with wind blowing around them.</textarea>
+    <label>Negative Prompt</label>
+    <textarea id="negativePromptInput">bad anatomy, blurry, multiple heads</textarea>
 
-  <!-- ✅ Task Creation Inputs -->
-  <label>Prompt:</label>
-  <textarea id="prompt" rows="2">Make the person in the image fly up into the sky, passing through clouds with wind blowing around them.</textarea>
+    <label>Duration</label>
+    <select id="durationInput">
+      <option value="5">5 seconds</option>
+      <option value="10">10 seconds</option>
+    </select>
 
-  <label>Negative Prompt:</label>
-  <input type="text" id="negativePrompt" value="bad anatomy, blurry, multiple heads" />
+    <button onclick="handleSubmit()">Generate Video</button>
 
-  <label>Runpod ID:</label>
-  <input type="text" id="runpodId" value="hjegqtd282a4od" />
-
-  <label>Duration:</label>
-  <select id="duration">
-    <option value="5">5 seconds</option>
-    <option value="10">10 seconds</option>
-  </select>
-
-  <button onclick="createTask()">Create Task</button>
-
-  <h2>Generated Videos</h2>
-  <div id="videoList"></div>
+    <div id="videoList"></div>
+  </div>
 
   <script>
     let uploadedFilename = "";
     let currentTaskId = "";
-    let pollingInterval;
 
-    // ✅ Upload handler
-    document.getElementById("uploadForm").addEventListener("submit", async function (e) {
-      e.preventDefault();
-
-      const fileInput = document.getElementById("imageInput");
-      const file = fileInput.files[0];
-      if (!file) return alert("Please select an image.");
-
+    async function uploadImage(runpodId, file) {
       const formData = new FormData();
-      formData.append("file", file); // must match backend's expected field name
+      formData.append("file", file);
+      formData.append("runpod_id", runpodId);
 
-      try {
-        const res = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+      const response = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
+        method: "POST",
+        body: formData
+      });
 
-        const text = await res.text();
-        console.log("Upload response (raw):", text);
-
-        const data = JSON.parse(text);
-
-        if (!data.filename) {
-          throw new Error("Filename missing in response.");
-        }
-
+      const data = await response.json();
+      if (response.ok && data.filename) {
         uploadedFilename = data.filename;
-        alert("Image uploaded successfully: " + uploadedFilename);
-      } catch (err) {
-        console.error("Upload failed:", err);
-        alert("Upload failed: " + err.message);
+        return true;
       }
-    });
-
-    // ✅ Create Task
-    async function createTask() {
-      if (!uploadedFilename) return alert("Please upload an image first.");
-
-      const prompt = document.getElementById("prompt").value;
-      const negativePrompt = document.getElementById("negativePrompt").value;
-      const runpodId = document.getElementById("runpodId").value;
-      const duration = parseInt(document.getElementById("duration").value);
-
-      try {
-        const res = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: prompt,
-            negative_prompt: negativePrompt,
-            input_image: uploadedFilename,
-            runpod_id: runpodId,
-            duration: duration,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!data.taskId) {
-          throw new Error("taskId missing in response.");
-        }
-
-        currentTaskId = data.taskId;
-        alert("Task created. Waiting for video...");
-
-        if (pollingInterval) clearInterval(pollingInterval);
-        pollingInterval = setInterval(() => checkTask(currentTaskId, runpodId), 5000);
-      } catch (err) {
-        console.error("Task creation failed:", err);
-        alert("Task creation failed: " + err.message);
-      }
+      alert("Image upload failed.");
+      return false;
     }
 
-    // ✅ Poll for status
+    async function createTask(prompt, negativePrompt, runpodId, duration) {
+      const response = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, negative_prompt: negativePrompt, input_image: uploadedFilename, runpod_id: runpodId, duration })
+      });
+      const data = await response.json();
+      currentTaskId = data.taskId;
+      return data;
+    }
+
     async function checkTask(taskId, runpodId) {
-      try {
-        const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
-        const data = await res.json();
-
-        if (data.status === "Complete") {
-          clearInterval(pollingInterval);
-          addVideo(data.video_url);
-        } else {
-          console.log("Still pending...");
-        }
-      } catch (err) {
-        console.error("Check task error:", err);
-      }
+      const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
+      return await res.json();
     }
 
-    // ✅ Display video
-    function addVideo(url) {
-      const container = document.getElementById("videoList");
-      const div = document.createElement("div");
-      div.className = "video-item";
-      div.innerHTML = `
-        <video src="${url}" controls></video>
+    function handleSubmit() {
+      const imageFile = document.getElementById("imageInput").files[0];
+      const runpodId = document.getElementById("runpodIdInput").value;
+      const prompt = document.getElementById("promptInput").value;
+      const negativePrompt = document.getElementById("negativePromptInput").value;
+      const duration = document.getElementById("durationInput").value;
+
+      if (!imageFile || !runpodId) {
+        alert("Please upload an image and enter a runpod ID.");
+        return;
+      }
+
+      uploadImage(runpodId, imageFile).then(success => {
+        if (success) {
+          createTask(prompt, negativePrompt, runpodId, duration).then(task => {
+            if (task.taskId) {
+              pollTask(task.taskId, runpodId);
+            } else {
+              alert("Failed to create task.");
+            }
+          });
+        }
+      });
+    }
+
+    function pollTask(taskId, runpodId) {
+      const interval = setInterval(async () => {
+        const result = await checkTask(taskId, runpodId);
+        if (result.status === "Complete") {
+          clearInterval(interval);
+          displayVideo(result.video_url);
+        } else {
+          console.log("Checking task status: " + result.status);
+        }
+      }, 5000);
+    }
+
+    function displayVideo(url) {
+      const videoList = document.getElementById("videoList");
+      const container = document.createElement("div");
+      container.classList.add("video-item");
+      container.innerHTML = `
+        <video controls src="${url}"></video>
         <a href="${url}" download>Download Video</a>
       `;
-      container.prepend(div);
+      videoList.prepend(container);
     }
   </script>
 </body>
