@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-        task_id,
+        taskId,
         prompt: promptText,
         filename,
         video_url,
