@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Image to Video Generator</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 30px auto; padding: 20px; }
+    input, select, textarea, button { width: 100%; padding: 10px; margin: 10px 0; }
+    button { background: #1d4ed8; color: white; border: none; cursor: pointer; }
+    button:hover { background: #2563eb; }
+    video { width: 100%; margin-top: 10px; }
+    .video-item { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Image to Video Generator</h1>
+
+  <label>Upload Image:</label>
+  <input type="file" id="imageInput" accept="image/*" />
+  <button onclick="uploadImage()">Upload</button>
+
+  <label>Prompt:</label>
+  <textarea id="prompt" rows="2">Make the person in the image fly up into the sky, passing through clouds with wind blowing around them.</textarea>
+
+  <label>Negative Prompt:</label>
+  <input type="text" id="negativePrompt" value="bad anatomy, blurry, multiple heads" />
+
+  <label>Runpod ID:</label>
+  <input type="text" id="runpodId" value="hjegqtd282a4od" />
+
+  <label>Duration:</label>
+  <select id="duration">
+    <option value="5">5 seconds</option>
+    <option value="10">10 seconds</option>
+  </select>
+
+  <button onclick="createTask()">Create Task</button>
+
+  <h2>Generated Videos</h2>
+  <div id="videoList"></div>
+
+  <script>
+    let uploadedFilename = "";
+    let currentTaskId = "";
+    let pollingInterval;
+
+    async function uploadImage() {
+      const fileInput = document.getElementById('imageInput');
+      const file = fileInput.files[0];
+      if (!file) return alert("Please select an image.");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        uploadedFilename = data.filename;
+        alert("Image uploaded successfully.");
+      } catch (err) {
+        console.error(err);
+        alert("Upload failed.");
+      }
+    }
+
+    async function createTask() {
+      if (!uploadedFilename) return alert("Please upload an image first.");
+
+      const prompt = document.getElementById("prompt").value;
+      const negativePrompt = document.getElementById("negativePrompt").value;
+      const runpodId = document.getElementById("runpodId").value;
+      const duration = parseInt(document.getElementById("duration").value);
+
+      try {
+        const res = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: prompt,
+            negative_prompt: negativePrompt,
+            input_image: uploadedFilename,
+            runpod_id: runpodId,
+            duration: duration,
+          }),
+        });
+        const data = await res.json();
+        currentTaskId = data.taskId;
+        alert("Task created. Waiting for video...");
+
+        if (pollingInterval) clearInterval(pollingInterval);
+        pollingInterval = setInterval(() => checkTask(currentTaskId, runpodId), 5000);
+      } catch (err) {
+        console.error(err);
+        alert("Task creation failed.");
+      }
+    }
+
+    async function checkTask(taskId, runpodId) {
+      try {
+        const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
+        const data = await res.json();
+
+        if (data.status === "Complete") {
+          clearInterval(pollingInterval);
+          addVideo(data.video_url);
+        } else {
+          console.log("Still pending...");
+        }
+      } catch (err) {
+        console.error("Check task error:", err);
+      }
+    }
+
+    function addVideo(url) {
+      const container = document.getElementById("videoList");
+      const div = document.createElement("div");
+      div.className = "video-item";
+      div.innerHTML = `
+        <video src="${url}" controls></video>
+        <a href="${url}" download>Download Video</a>
+      `;
+      container.prepend(div);
+    }
+  </script>
+</body>
+</html>
