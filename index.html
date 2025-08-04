@@ -10,8 +10,9 @@
     input, select, textarea, button { width: 100%; margin-top: 10px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
     button { background-color: #007BFF; color: white; border: none; cursor: pointer; }
     button:hover { background-color: #0056b3; }
-    video { width: 100%; margin-top: 10px; }
+    video, img { width: 100%; margin-top: 10px; }
     .video-item { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+    .status { font-style: italic; color: #888; margin-top: 5px; }
   </style>
 </head>
 <body>
@@ -20,7 +21,8 @@
 
     <label>Upload Image</label>
     <input type="file" id="imageInput" accept="image/*" />
-    
+    <img id="previewImage" style="display: none;" />
+
     <label>Runpod ID</label>
     <input type="text" id="runpodIdInput" placeholder="Enter runpod ID" />
 
@@ -43,6 +45,19 @@
   <script>
     let uploadedFilename = "";
     let currentTaskId = "";
+
+    document.getElementById("imageInput").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = document.getElementById("previewImage");
+          img.src = e.target.result;
+          img.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
 
     async function uploadImage(runpodId, file) {
       const formData = new FormData();
@@ -110,15 +125,21 @@
       }
     }
 
-    async function checkTask(taskId, runpodId) {
+    async function checkTask(taskId, runpodId, container) {
       try {
-        const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
+        const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?task_id=${taskId}&runpod_id=${runpodId}`);
         const data = await res.json();
         console.log("Check task result:", data);
-        return data;
+
+        if (data.status === "Complete") {
+          container.querySelector(".status").textContent = "Complete";
+          container.innerHTML += `
+            <video controls src="${data.video_url}"></video>
+            <a href="${data.video_url}" download>Download Video</a>
+          `;
+        }
       } catch (err) {
         console.error("Error checking task:", err);
-        return { status: "Error" };
       }
     }
 
@@ -138,35 +159,30 @@
         if (success) {
           createTask(prompt, negativePrompt, runpodId, duration).then(task => {
             if (task.task_id) {
-            pollTask(task.task_id, runpodId);
+              const videoList = document.getElementById("videoList");
+              const container = document.createElement("div");
+              container.classList.add("video-item");
+              container.innerHTML = `
+                <p class="status">Generating...</p>
+              `;
+              videoList.prepend(container);
+              pollTask(task.task_id, runpodId, container);
+            } else {
+              alert("Task creation did not return a valid taskId.");
             }
           });
         }
       });
     }
 
-    function pollTask(taskId, runpodId) {
+    function pollTask(taskId, runpodId, container) {
       console.log("Starting polling for taskId:", taskId);
       const interval = setInterval(async () => {
-        const result = await checkTask(taskId, runpodId);
-        if (result.status === "Complete") {
+        const result = await checkTask(taskId, runpodId, container);
+        if (result && result.status === "Complete") {
           clearInterval(interval);
-          displayVideo(result.video_url);
-        } else {
-          console.log("Checking task status:", result.status);
         }
       }, 5000);
-    }
-
-    function displayVideo(url) {
-      const videoList = document.getElementById("videoList");
-      const container = document.createElement("div");
-      container.classList.add("video-item");
-      container.innerHTML = `
-        <video controls src="${url}"></video>
-        <a href="${url}" download>Download Video</a>
-      `;
-      videoList.prepend(container);
     }
   </script>
 </body>
