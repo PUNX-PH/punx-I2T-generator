@@ -13,6 +13,7 @@
     video, img { width: 100%; margin-top: 10px; }
     .video-item { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
     .status { font-style: italic; color: #888; margin-top: 5px; }
+    h3 { margin-top: 40px; }
   </style>
 </head>
 <body>
@@ -39,6 +40,11 @@
     </select>
 
     <button onclick="handleSubmit()">Generate Video</button>
+
+    <h3>Currently Generating</h3>
+    <div id="inProgressList"></div>
+
+    <h3>Completed Videos</h3>
     <div id="videoList"></div>
   </div>
 
@@ -64,8 +70,6 @@
       formData.append("file", file);
       formData.append("runpod_id", runpodId);
 
-      console.log("Uploading image with runpod_id:", runpodId);
-
       try {
         const response = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
           method: "POST",
@@ -73,8 +77,6 @@
         });
 
         const data = await response.json();
-        console.log("Upload Response:", data);
-
         if (response.ok && data.filename) {
           uploadedFilename = data.filename;
           return true;
@@ -97,8 +99,6 @@
         duration: parseInt(duration)
       };
 
-      console.log("Creating task with body:", body);
-
       try {
         const response = await fetch("https://punx-i2-t-generator.vercel.app/api/create-task", {
           method: "POST",
@@ -107,10 +107,7 @@
         });
 
         const text = await response.text();
-        console.log("Raw task response:", text);
-
         const data = JSON.parse(text);
-        console.log("Parsed task data:", data);
 
         if (!response.ok) {
           alert("Task creation failed: " + (data.message || "Server Error"));
@@ -129,7 +126,6 @@
       try {
         const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
         const data = await res.json();
-        console.log("Check task result:", data);
 
         if (data.status === "Complete") {
           container.querySelector(".status").textContent = "Complete";
@@ -137,9 +133,17 @@
             <video controls src="${data.video_url}"></video>
             <a href="${data.video_url}" download>Download Video</a>
           `;
+
+          // Move to completed section
+          const completedList = document.getElementById("videoList");
+          container.parentElement.removeChild(container);
+          completedList.prepend(container);
         }
+
+        return data;
       } catch (err) {
         console.error("Error checking task:", err);
+        return { status: "Error" };
       }
     }
 
@@ -159,13 +163,14 @@
         if (success) {
           createTask(prompt, negativePrompt, runpodId, duration).then(task => {
             if (task.task_id) {
-              const videoList = document.getElementById("videoList");
+              const inProgressList = document.getElementById("inProgressList");
               const container = document.createElement("div");
               container.classList.add("video-item");
+              container.id = `task-${task.task_id}`;
               container.innerHTML = `
-                <p class="status">Generating...</p>
+                <p class="status">Generating...<br><strong>Task ID:</strong> ${task.task_id}</p>
               `;
-              videoList.prepend(container);
+              inProgressList.prepend(container);
               pollTask(task.task_id, runpodId, container);
             } else {
               alert("Task creation did not return a valid taskId.");
@@ -176,7 +181,6 @@
     }
 
     function pollTask(taskId, runpodId, container) {
-      console.log("Starting polling for taskId:", taskId);
       const interval = setInterval(async () => {
         const result = await checkTask(taskId, runpodId, container);
         if (result && result.status === "Complete") {
