@@ -51,19 +51,25 @@
       if (!file) return alert("Please select an image.");
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", file); // key must be 'file'
 
       try {
         const res = await fetch("https://punx-i2-t-generator.vercel.app/api/upload", {
           method: "POST",
           body: formData,
         });
+
         const data = await res.json();
+
+        if (!data.filename) {
+          throw new Error("Filename missing in response.");
+        }
+
         uploadedFilename = data.filename;
-        alert("Image uploaded successfully.");
+        alert("Image uploaded successfully: " + uploadedFilename);
       } catch (err) {
-        console.error(err);
-        alert("Upload failed.");
+        console.error("Upload failed:", err);
+        alert("Upload failed: " + err.message);
       }
     }
 
@@ -87,15 +93,21 @@
             duration: duration,
           }),
         });
+
         const data = await res.json();
+
+        if (!data.taskId) {
+          throw new Error("taskId missing in response.");
+        }
+
         currentTaskId = data.taskId;
         alert("Task created. Waiting for video...");
 
         if (pollingInterval) clearInterval(pollingInterval);
         pollingInterval = setInterval(() => checkTask(currentTaskId, runpodId), 5000);
       } catch (err) {
-        console.error(err);
-        alert("Task creation failed.");
+        console.error("Task creation failed:", err);
+        alert("Task creation failed: " + err.message);
       }
     }
 
