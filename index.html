@@ -94,23 +94,37 @@
       display: block;
       border-radius: 6px;
     }
-    .tasks-header {
-      font-size: 2em;
-      margin: 28px 0 26px 0;
-      font-weight: bold;
-      letter-spacing: 2px;
-      color: var(--neon-blue);
-      background: var(--panel-color);
-      padding: 14px 0;
-      text-align: center;
-      border-radius: 18px;
-      border: 2px solid var(--neon-blue);
-      width: 100%;
+
+    .tabs {
+      margin: 35px 0 18px 0;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
     }
+    .tab-btn {
+      flex: 1;
+      padding: 16px 0;
+      border-radius: 18px;
+      border: 2.5px solid var(--neon-blue);
+      background: var(--panel-color);
+      color: var(--neon-blue);
+      font-weight: bold;
+      font-size: 1.3em;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s;
+    }
+    .tab-btn.active {
+      background: var(--neon-blue);
+      color: var(--deep-purple);
+    }
+    .tab-content { display: none; min-height: 140px;}
+    .tab-content.active { display: block;}
     .tasks-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
       gap: 30px;
+      width: 100%;
     }
     .task-card {
       border: 2.5px solid var(--neon-blue);
@@ -234,8 +248,13 @@
       <label>Negative Prompt<textarea id="negativePromptInput">bad anatomy, blurry, multiple heads</textarea></label>
       <label>Duration<select id="durationInput"><option value="5">5 seconds</option><option value="10">10 seconds</option></select></label>
       <button id="submitBtn" class="submit" onclick="handleSubmit()">Generate Video</button>
-      <div class="tasks-header">Tasks</div>
-      <div id="tasksGrid" class="tasks-grid"></div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('tasksTab', this)">Tasks</button>
+        <button class="tab-btn" onclick="showTab('completedTab', this)">Completed</button>
+      </div>
+      <div id="tasksTab"    class="tab-content active"><div id="tasksGrid" class="tasks-grid"></div></div>
+      <div id="completedTab" class="tab-content">  <div id="completedGrid" class="tasks-grid"></div></div>
     </div>
   </div>
   <div id="videoModal" class="modal" onclick="closeModal(event)">
@@ -248,66 +267,57 @@
 const TASKS_KEY = "tasks2";
 const THUMB_KEY_PREFIX = "thumb_2_";
 
-function saveTaskList(tasks) {
-  localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
-}
-function getTaskList() {
-  try { return JSON.parse(localStorage.getItem(TASKS_KEY)) || []; }
-  catch { return []; }
-}
-function saveThumb(taskId, imgDataUrl) {
-  localStorage.setItem(THUMB_KEY_PREFIX+taskId, imgDataUrl);
-}
-function getThumb(taskId) {
-  return localStorage.getItem(THUMB_KEY_PREFIX+taskId);
+function saveTaskList(tasks) { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }
+function getTaskList()       { try { return JSON.parse(localStorage.getItem(TASKS_KEY)) || []; } catch { return []; } }
+function saveThumb(taskId, imgDataUrl) { localStorage.setItem(THUMB_KEY_PREFIX+taskId, imgDataUrl); }
+function getThumb(taskId) { return localStorage.getItem(THUMB_KEY_PREFIX+taskId); }
+
+function renderAllTasks() {
+  const tasks = getTaskList();
+  // "Tasks" tab: Pending+Processing only, "Completed" tab: completed only
+  let queue = [], complete = [];
+  for(let t of tasks) {
+    if(t.status === "Complete") complete.push(t);
+    else queue.push(t);
+  }
+  renderTasksGrid(queue, "tasksGrid");
+  renderTasksGrid(complete, "completedGrid", true);
 }
 
-// Render all tasks as grid with Queue logic (first pending = in progress, rest = in queue)
-function renderTasksGrid() {
-  const tasks = getTaskList();
-  const grid = document.getElementById("tasksGrid");
+function renderTasksGrid(tasks, gridId, completedTab) {
+  const grid = document.getElementById(gridId);
   if (!tasks.length) {
     grid.innerHTML = '<div style="color:#888;font-size:20px;padding:20px 0">No tasks yet.</div>';
     return;
   }
-  // Compute which task is in progress
   let idxInProgress = -1;
-  for(let i=0;i<tasks.length;i++){
-    if(tasks[i].status === "Pending" || tasks[i].status === "Processing") {
-      idxInProgress = i; break;
+  if(!completedTab) { // only for pending tab
+    for(let i=0;i<tasks.length;i++){
+      if(tasks[i].status === "Pending" || tasks[i].status === "Processing") { idxInProgress = i; break; }
     }
   }
   grid.innerHTML = '';
   for (let i = 0; i < tasks.length; i++) {
-    // Enhance only for rendering, do not save __showProg
     let showQueue = false, showProg = false;
-    if (tasks[i].status === "Complete") {
+    if (completedTab) {
+      showProg = false; showQueue = false;
+    } else if (tasks[i].status === "Complete") {
       showProg = false; showQueue = false;
     } else if (i === idxInProgress) {
-      showProg = true;
-      showQueue = false;
+      showProg = true;  showQueue = false;
     } else {
-      showProg = false;
-      showQueue = true;
+      showProg = false; showQueue = true;
     }
     grid.appendChild(createTaskCard(tasks[i], showProg, showQueue));
   }
 }
 
-// Create rectangle UI per task with new badge logic
 function createTaskCard(t, showProg, showQueue) {
   const div = document.createElement("div");
-  // Badge text/color logic
   let badgeText = "", badgeClass = "";
-  if (t.status === "Complete") {
-    badgeText = "Completed",   badgeClass = "badge-completed";
-  } else if (showProg) {
-    badgeText = "In Progress"; badgeClass = "badge-inprog";
-  } else if (showQueue) {
-    badgeText = "In Queue"; badgeClass = "badge-queue";
-  } else {
-    badgeText = ""; badgeClass = "";
-  }
+  if (t.status === "Complete")      badgeText = "Completed",   badgeClass = "badge-completed";
+  else if (showProg)               badgeText = "In Progress", badgeClass = "badge-inprog";
+  else if (showQueue)              badgeText = "In Queue",    badgeClass = "badge-queue";
   let content = `
     <div class="task-badges">
       <span class="task-badge ${badgeClass}">${badgeText}</span>
@@ -417,9 +427,9 @@ function pollAllTasks() {
     }
     if (changed) {
       saveTaskList(tasks);
-      renderTasksGrid();
+      renderAllTasks();
     } else {
-      renderTasksGrid();
+      renderAllTasks();
     }
   };
   if(pollingInterval) clearInterval(pollingInterval);
@@ -456,7 +466,7 @@ function handleSubmit() {
             created_time: Date.now(),
           });
           saveTaskList(tasks);
-          renderTasksGrid();
+          renderAllTasks();
           pollAllTasks();
         } else {
           alert("Task creation did not return a valid taskId.");
@@ -470,6 +480,7 @@ function handleSubmit() {
     }
   });
 }
+
 // Modal
 function openModal(videoUrl) {
   const modal = document.getElementById("videoModal");
@@ -494,13 +505,21 @@ document.addEventListener("keydown", function(e){
   if(e.key === "Escape"){ closeModal(); }
 });
 
+// Tabs
+function showTab(tabId, btnRef) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btnRef.classList.add('active');
+}
+
 document.addEventListener("DOMContentLoaded", function() {
   let list = getTaskList();
   for (let t of list) {
     if (!t.thumbnail && t.taskId) t.thumbnail = getThumb(t.taskId);
   }
   saveTaskList(list);
-  renderTasksGrid();
+  renderAllTasks();
   pollAllTasks();
 });
 </script>
