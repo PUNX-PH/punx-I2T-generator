@@ -36,30 +36,32 @@
     }
     .main {
       margin: 0 auto;
-      padding: 40px 15px 70px 15px;
-      max-width: 1100px;
+      padding: 20px 6px 28px 6px;
+      max-width: 900px;
       min-height: 100vh;
     }
     .container {
       background: var(--panel-color);
-      padding: 25px;
+      padding: 18px 16px 18px 16px;
       border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0,255,255,0.1);
+      box-shadow: 0 0 16px rgba(0,255,255,0.08);
     }
-    h2 {
+    h2, .upload-title {
       color: var(--neon-blue);
       text-align: center;
-      margin-top: 0;
+      margin: 0 0 12px 0;
+      font-size: 1.7em;
     }
     label {
       font-weight: bold;
-      margin-top: 20px;
+      margin-top: 8px;
+      margin-bottom: 8px;
       display: block;
     }
     input, select, textarea, button {
       width: 100%;
       padding: 12px;
-      margin-top: 8px;
+      margin-top: 5px;
       border-radius: 6px;
       border: 1px solid #555;
       font-size: 14px;
@@ -74,7 +76,8 @@
       background: var(--flame-orange);
       color: white;
       font-weight: bold;
-      margin-top: 25px;
+      margin-top: 13px;
+      margin-bottom: 10px;
       border: none;
       cursor: pointer;
     }
@@ -87,29 +90,50 @@
     button.submit:hover:not(:disabled) {
       background: #e65500;
     }
+
+    .center-upload {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 auto 12px auto;
+      max-width: 220px;
+      width: 100%;
+    }
+    .center-upload label {
+      width: 100%;
+      text-align: center;
+      margin-bottom: 3px;
+      font-weight: normal;
+    }
+    .center-upload input[type="file"] {
+      width: 130px;
+      max-width: 90vw;
+      margin-bottom: 2px;
+      font-size: .95em;
+    }
     #previewImage {
-      width: 200px;
-      height: auto;
-      margin-top: 10px;
-      display: block;
-      border-radius: 6px;
+      margin-top: 6px;
+      width: 100%;
+      max-width: 210px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #0005;
     }
 
     .tabs {
-      margin: 35px 0 18px 0;
+      margin: 15px 0 6px 0;
       display: flex;
       justify-content: center;
-      gap: 16px;
+      gap: 12px;
     }
     .tab-btn {
       flex: 1;
-      padding: 16px 0;
-      border-radius: 18px;
-      border: 2.5px solid var(--neon-blue);
+      padding: 12px 0;
+      border-radius: 16px;
+      border: 2.2px solid var(--neon-blue);
       background: var(--panel-color);
       color: var(--neon-blue);
       font-weight: bold;
-      font-size: 1.3em;
+      font-size: 1.1em;
       letter-spacing: 1px;
       cursor: pointer;
       transition: background 0.3s, color 0.3s;
@@ -118,25 +142,25 @@
       background: var(--neon-blue);
       color: var(--deep-purple);
     }
-    .tab-content { display: none; min-height: 140px;}
+    .tab-content { display: none; min-height: 85px;}
     .tab-content.active { display: block;}
     .tasks-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-      gap: 30px;
+      grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+      gap: 22px;
       width: 100%;
     }
     .task-card {
-      border: 2.5px solid var(--neon-blue);
+      border: 2px solid var(--neon-blue);
       border-radius: 14px;
-      box-shadow: 0 0 15px #00e5ff44;
+      box-shadow: 0 0 9px #00e5ff44;
       overflow: hidden;
       position: relative;
       background: #000;
       display: flex;
       flex-direction: column;
       cursor: default;
-      transition: transform 0.17s, border-color 0.18s;
+      transition: transform 0.15s, border-color 0.15s;
     }
     .task-card.completed {
       cursor: pointer;
@@ -147,14 +171,14 @@
     }
     .task-thumb, .task-video {
       width: 100%;
-      height: 260px;
+      height: 160px;
       background: #222;
       object-fit: cover;
       display: block;
     }
     .task-prompt {
-      padding: 12px 12px 7px 12px;
-      font-size: 1.25em;
+      padding: 8px 8px 6px 8px;
+      font-size: 1.08em;
       background: #111c;
       color: #fff;
       text-align: center;
@@ -163,16 +187,16 @@
     .task-badges {
       display: flex;
       justify-content: flex-end;
-      gap: 10px;
+      gap: 6px;
       position: absolute;
-      top: 10px; left: 0; right: 0;
-      padding-inline:18px;
+      top: 7px; left: 0; right: 0;
+      padding-inline:8px;
       z-index:5;
     }
     .task-badge {
-      padding: 7px 18px;
-      border-radius: 14px;
-      font-size: 1.15em;
+      padding: 5px 11px;
+      border-radius: 13px;
+      font-size: .98em;
       font-weight: bold;
       color: #fff;
       text-shadow: 0 2px 6px #111c;
@@ -180,8 +204,8 @@
       border: none;
       display: inline-block;
       background: var(--flame-orange);
-      opacity: 0.90;
-      box-shadow: 0 0 7px #000c;
+      opacity: 0.91;
+      box-shadow: 0 0 6px #000a;
       pointer-events:none;
     }
     .badge-queue     { background: var(--queue-badge); color: #222;}
@@ -230,65 +254,28 @@
       from { opacity: 0 }
       to { opacity: 1 }
     }
-    @media (max-width: 820px) {
-      .main { padding:10px 4px; }
+    @media (max-width: 540px) {
+      .main { padding:6px 1vw 10px 1vw; }
+      .container { padding: 6px 3vw 10px 3vw;}
       .tasks-grid { grid-template-columns: 1fr;}
-      .tasks-header{font-size:1.1em;}
     }
-
-   .upload-title {
-  text-align: center;
-  color: var(--neon-blue);
-  font-size: 2em;
-  margin-bottom: 18px;
-  margin-top: 0;
-}
-
-.center-upload {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 0 auto 24px auto;
-  max-width: 260px;
-  width: 100%;
-}
-.center-upload label {
-  width: 100%;
-  text-align: center;
-  margin-bottom: 8px;
-}
-.center-upload input[type="file"] {
-  width: 160px;
-  max-width: 90vw;
-  margin-bottom: 3px;
-}
-#previewImage {
-  margin-top: 12px;
-  width: 100%;
-  max-width: 240px;
-  border-radius: 14px;
-  box-shadow: 0 0 14px #0005;
-}
   </style>
 </head>
 <body data-theme="dark">
   <div class="main">
     <div class="container">
-    <h2 class="upload-title">Upload Image</h2>
-  <div class="center-upload">
-    <label>
-      <input type="file" id="imageInput" accept="image/*"/>
-    </label>
-    <img id="previewImage" style="display:none;"/>
-  </div>
-  </div>
-    </div>
+      <h2 class="upload-title">Upload Image</h2>
+      <div class="center-upload">
+        <label>
+          <input type="file" id="imageInput" accept="image/*"/>
+        </label>
+        <img id="previewImage" style="display:none;"/>
+      </div>
       <label>Runpod ID<input type="text" id="runpodIdInput" placeholder="Enter runpod ID"/></label>
       <label>Prompt<textarea id="promptInput">Make the person in the image fly up into the sky...</textarea></label>
       <label>Negative Prompt<textarea id="negativePromptInput">bad anatomy, blurry, multiple heads</textarea></label>
       <label>Duration<select id="durationInput"><option value="5">5 seconds</option><option value="10">10 seconds</option></select></label>
       <button id="submitBtn" class="submit" onclick="handleSubmit()">Generate Video</button>
-
       <div class="tabs">
         <button class="tab-btn active" onclick="showTab('tasksTab', this)">Tasks</button>
         <button class="tab-btn" onclick="showTab('completedTab', this)">Completed</button>
@@ -306,28 +293,24 @@
 <script>
 const TASKS_KEY = "tasks2";
 const THUMB_KEY_PREFIX = "thumb_2_";
-
 function saveTaskList(tasks) { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }
 function getTaskList()       { try { return JSON.parse(localStorage.getItem(TASKS_KEY)) || []; } catch { return []; } }
 function saveThumb(taskId, imgDataUrl) { localStorage.setItem(THUMB_KEY_PREFIX+taskId, imgDataUrl); }
 function getThumb(taskId) { return localStorage.getItem(THUMB_KEY_PREFIX+taskId); }
-
 function renderAllTasks() {
   const tasks = getTaskList();
-  // "Tasks" tab: Pending+Processing only, "Completed" tab: completed only
   let queue = [], complete = [];
   for(let t of tasks) {
     if(t.status === "Complete") complete.push(t);
     else queue.push(t);
   }
   renderTasksGrid(queue, "tasksGrid");
-  renderTasksGrid(complete.slice().reverse(), "completedGrid", true); // MOST RECENT COMPLETE FIRST
+  renderTasksGrid(complete.slice().reverse(), "completedGrid", true); // Most recent completed first
 }
-
 function renderTasksGrid(tasks, gridId, completedTab) {
   const grid = document.getElementById(gridId);
   if (!tasks.length) {
-    grid.innerHTML = '<div style="color:#888;font-size:20px;padding:20px 0">No tasks yet.</div>';
+    grid.innerHTML = '<div style="color:#888;font-size:18px;padding:12px 0">No tasks yet.</div>';
     return;
   }
   let idxInProgress = -1;
@@ -351,7 +334,6 @@ function renderTasksGrid(tasks, gridId, completedTab) {
     grid.appendChild(createTaskCard(tasks[i], showProg, showQueue));
   }
 }
-
 function createTaskCard(t, showProg, showQueue) {
   const div = document.createElement("div");
   let badgeText = "", badgeClass = "";
@@ -367,7 +349,7 @@ function createTaskCard(t, showProg, showQueue) {
       ? `<video class="task-video" src="${t.video_url}" preload="metadata" muted></video>`
       : t.thumbnail 
         ? `<img class="task-thumb" src="${t.thumbnail}" alt="thumbnail">`
-        : `<div style="width:100%;height:260px;background:#222"></div>`
+        : `<div style="width:100%;height:160px;background:#222"></div>`
     }
     <div class="task-prompt">${(t.prompt || "").slice(0,40)}...</div>
   `;
@@ -379,7 +361,6 @@ function createTaskCard(t, showProg, showQueue) {
   }
   return div;
 }
-
 let previewDataUrl = "";
 document.getElementById("imageInput").addEventListener("change", (event) => {
   const file = event.target.files[0];
@@ -394,7 +375,6 @@ document.getElementById("imageInput").addEventListener("change", (event) => {
     reader.readAsDataURL(file);
   }
 });
-
 async function uploadImage(runpodId, file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -520,7 +500,6 @@ function handleSubmit() {
     }
   });
 }
-
 // Modal
 function openModal(videoUrl) {
   const modal = document.getElementById("videoModal");
@@ -544,7 +523,6 @@ function closeModal(e) {
 document.addEventListener("keydown", function(e){
   if(e.key === "Escape"){ closeModal(); }
 });
-
 // Tabs
 function showTab(tabId, btnRef) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -552,7 +530,6 @@ function showTab(tabId, btnRef) {
   document.getElementById(tabId).classList.add('active');
   btnRef.classList.add('active');
 }
-
 document.addEventListener("DOMContentLoaded", function() {
   let list = getTaskList();
   for (let t of list) {
