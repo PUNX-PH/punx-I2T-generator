@@ -293,8 +293,12 @@
 <script>
 const TASKS_KEY = "tasks2";
 
+// In-memory map: taskId -> thumbnail DataURL (only for this page session)
+const sessionThumbnails = {};
+
 function saveTaskList(tasks) { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }
 function getTaskList()       { try { return JSON.parse(localStorage.getItem(TASKS_KEY)) || []; } catch { return []; } }
+
 function renderAllTasks() {
   const tasks = getTaskList();
   let queue = [], complete = [];
@@ -338,6 +342,8 @@ function createTaskCard(t, showProg, showQueue) {
   if (t.status === "Complete")      badgeText = "Completed",   badgeClass = "badge-completed";
   else if (showProg)               badgeText = "In Progress", badgeClass = "badge-inprog";
   else if (showQueue)              badgeText = "In Queue",    badgeClass = "badge-queue";
+
+  let thumb = (t.status !== "Complete" && sessionThumbnails[t.taskId]) ? sessionThumbnails[t.taskId] : "";
   let content = `
     <div class="task-badges">
       <span class="task-badge ${badgeClass}">${badgeText}</span>
@@ -345,8 +351,8 @@ function createTaskCard(t, showProg, showQueue) {
     ${
       t.status === "Complete"
       ? `<video class="task-video" src="${t.video_url}" preload="metadata" muted></video>`
-      : t.thumbnail 
-        ? `<img class="task-thumb" src="${t.thumbnail}" alt="thumbnail">`
+      : thumb
+        ? `<img class="task-thumb" src="${thumb}" alt="thumbnail">`
         : `<div style="width:100%;height:160px;background:#222"></div>`
     }
     <div class="task-prompt">${(t.prompt || "").slice(0,40)}...</div>
@@ -360,6 +366,7 @@ function createTaskCard(t, showProg, showQueue) {
   return div;
 }
 let previewDataUrl = "";
+let lastUploadTaskId = null;
 document.getElementById("imageInput").addEventListener("change", (event) => {
   const file = event.target.files[0];
   if (file) {
@@ -373,6 +380,7 @@ document.getElementById("imageInput").addEventListener("change", (event) => {
     reader.readAsDataURL(file);
   }
 });
+
 async function uploadImage(runpodId, file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -473,13 +481,14 @@ function handleSubmit() {
       createTask(prompt, negativePrompt, runpodId, duration, input_image).then(task => {
         if (task.task_id) {
           let tasks = getTaskList();
-          tasks.push({ // first come, first serve: push at end
+          // Store thumbnail only in memory!
+          sessionThumbnails[task.task_id] = previewDataUrl || ""
+          tasks.push({
             taskId: task.task_id,
             prompt,
             runpodId,
             status: "Pending",
             input_image,
-            thumbnail: previewDataUrl || "",
             created_time: Date.now(),
           });
           saveTaskList(tasks);
@@ -497,6 +506,7 @@ function handleSubmit() {
     }
   });
 }
+
 // Modal
 function openModal(videoUrl) {
   const modal = document.getElementById("videoModal");
