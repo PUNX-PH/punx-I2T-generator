@@ -28,36 +28,17 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      display: flex;
       font-family: 'Orbitron', sans-serif;
       background: var(--bg-color);
       color: var(--text-color);
       transition: background 0.3s, color 0.3s;
-    }
-    .sidebar {
-      width: 220px;
-      height: 100vh;
-      background: var(--panel-color);
-      border-right: 2px solid var(--neon-blue);
-      padding: 20px;
-      position: fixed;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      box-sizing: border-box;
-    }
-    .brand {
-      font-size: 20px;
-      color: var(--neon-blue);
-      margin-bottom: 30px;
+      min-height: 100vh;
     }
     .main {
-      margin-left: 220px;
-      padding: 40px;
-      width: calc(100% - 220px);
-      max-width: 1000px;
+      margin: 0 auto;
+      padding: 40px 15px 70px 15px;
+      max-width: 1100px;
       min-height: 100vh;
-      box-sizing: border-box;
     }
     .container {
       background: var(--panel-color);
@@ -68,6 +49,7 @@
     h2 {
       color: var(--neon-blue);
       text-align: center;
+      margin-top: 0;
     }
     label {
       font-weight: bold;
@@ -114,7 +96,7 @@
     }
     .tasks-header {
       font-size: 2em;
-      margin: 30px 0 25px 0;
+      margin: 28px 0 26px 0;
       font-weight: bold;
       letter-spacing: 2px;
       color: var(--neon-blue);
@@ -131,7 +113,7 @@
       gap: 30px;
     }
     .task-card {
-      border: 2px solid var(--neon-blue);
+      border: 2.5px solid var(--neon-blue);
       border-radius: 14px;
       box-shadow: 0 0 15px #00e5ff44;
       overflow: hidden;
@@ -140,7 +122,7 @@
       display: flex;
       flex-direction: column;
       cursor: default;
-      transition: transform 0.17s;
+      transition: transform 0.17s, border-color 0.18s;
     }
     .task-card.completed {
       cursor: pointer;
@@ -158,7 +140,7 @@
     }
     .task-prompt {
       padding: 12px 12px 7px 12px;
-      font-size: 1.3em;
+      font-size: 1.25em;
       background: #111c;
       color: #fff;
       text-align: center;
@@ -176,7 +158,7 @@
     .task-badge {
       padding: 7px 18px;
       border-radius: 14px;
-      font-size: 1.1em;
+      font-size: 1.15em;
       font-weight: bold;
       color: #fff;
       text-shadow: 0 2px 6px #111c;
@@ -184,12 +166,12 @@
       border: none;
       display: inline-block;
       background: var(--flame-orange);
-      opacity: 0.92;
+      opacity: 0.90;
       box-shadow: 0 0 7px #000c;
       pointer-events:none;
     }
     .badge-queue     { background: var(--queue-badge); color: #222;}
-    .badge-progress  { background: var(--progress-badge);}
+    .badge-inprog    { background: var(--progress-badge);}
     .badge-completed { background: var(--complete-badge); color: #222;}
 
     .modal {
@@ -231,24 +213,18 @@
       cursor: pointer;
       z-index: 1001;
     }
-    @media (max-width: 700px) {
-      .main { padding:10px; margin-left: 90px; width: calc(100% - 90px);}
-      .sidebar { width: 90px; padding: 8px;}
+    @keyframes fade-in {
+      from { opacity: 0 }
+      to { opacity: 1 }
+    }
+    @media (max-width: 820px) {
+      .main { padding:10px 4px; }
       .tasks-grid { grid-template-columns: 1fr;}
       .tasks-header{font-size:1.1em;}
     }
   </style>
 </head>
 <body data-theme="dark">
-  <div class="sidebar">
-    <div>
-      <div class="brand">⚡ PUNX GEN</div>
-      <a href="#" class="nav-link">Generate</a>
-      <a href="#" class="nav-link">History</a>
-      <a href="#" class="nav-link">Settings</a>
-    </div>
-    <button onclick="toggleTheme()">Toggle Theme</button>
-  </div>
   <div class="main">
     <div class="container">
       <h2>🎬 Image to Video</h2>
@@ -259,7 +235,6 @@
       <label>Negative Prompt<textarea id="negativePromptInput">bad anatomy, blurry, multiple heads</textarea></label>
       <label>Duration<select id="durationInput"><option value="5">5 seconds</option><option value="10">10 seconds</option></select></label>
       <button id="submitBtn" class="submit" onclick="handleSubmit()">Generate Video</button>
-
       <div class="tasks-header">Tasks</div>
       <div id="tasksGrid" class="tasks-grid"></div>
     </div>
@@ -281,18 +256,14 @@ function getTaskList() {
   try { return JSON.parse(localStorage.getItem(TASKS_KEY)) || []; }
   catch { return []; }
 }
-// Save/retrieve thumbnails to localStorage so can restore after page reloads.
 function saveThumb(taskId, imgDataUrl) {
   localStorage.setItem(THUMB_KEY_PREFIX+taskId, imgDataUrl);
 }
 function getThumb(taskId) {
   return localStorage.getItem(THUMB_KEY_PREFIX+taskId);
 }
-function removeThumb(taskId) {
-  localStorage.removeItem(THUMB_KEY_PREFIX+taskId);
-}
 
-// Render all tasks as grid
+// Render all tasks as grid with Queue logic (first pending = in progress, rest = in queue)
 function renderTasksGrid() {
   const tasks = getTaskList();
   const grid = document.getElementById("tasksGrid");
@@ -301,22 +272,31 @@ function renderTasksGrid() {
     return;
   }
   grid.innerHTML = '';
-  for (const t of tasks) {
-    grid.appendChild(createTaskCard(t));
+  // Find PENDING, separate others for badge logic
+  const pendingIdxs = [];
+  for(let i=0;i<tasks.length;i++){
+    if(tasks[i].status === "Pending" || tasks[i].status === "Processing") pendingIdxs.push(i);
+  }
+  // If there is at least one Pending, set first to Processing for badge
+  if(pendingIdxs.length>0) {
+    let firstPending = pendingIdxs[0];
+    if(tasks[firstPending].status === "Pending") tasks[firstPending].__showProg = true; else tasks[firstPending].__showProg = false;
+    for(let j=1;j<pendingIdxs.length;j++) tasks[pendingIdxs[j]].__showProg = false;
+  }
+  for (let i=0;i<tasks.length;i++) {
+    grid.appendChild(createTaskCard(tasks[i]));
   }
 }
 
-// Create a task rectangle UI with correct badge and preview
+// Create rectangle UI per task with new badge logic
 function createTaskCard(t) {
   const div = document.createElement("div");
-  const taskState = t.status === "Complete" ? "completed"
-                  : t.status === "Processing" ? "inprogress"
-                  : "queue";
+  // Badge text/color logic
   let badgeText = "", badgeClass = "";
-  if (t.status === "Complete") badgeText = "Completed", badgeClass = "badge-completed";
-  else if (t.status === "Processing") badgeText = "In Progress", badgeClass = "badge-progress";
-  else badgeText = "In Queue", badgeClass = "badge-queue";
-  // For completed, show the video; otherwise show the thumbnail image.
+  if (t.status === "Complete")      badgeText = "Completed",   badgeClass = "badge-completed";
+  else if (t.status === "Processing" || t.__showProg) badgeText = "In Progress", badgeClass = "badge-inprog";
+  else                               badgeText = "In Queue",      badgeClass = "badge-queue";
+  // For completed, show the video; otherwise thumbnail image.
   let content = `
     <div class="task-badges">
       <span class="task-badge ${badgeClass}">${badgeText}</span>
@@ -340,7 +320,7 @@ function createTaskCard(t) {
   return div;
 }
 
-// -- Image selection, store as previewDataUrl in memory --
+// Image selection, store as previewDataUrl
 let previewDataUrl = "";
 document.getElementById("imageInput").addEventListener("change", (event) => {
   const file = event.target.files[0];
@@ -356,7 +336,6 @@ document.getElementById("imageInput").addEventListener("change", (event) => {
   }
 });
 
-// ----- TASK LIFECYCLE -----
 async function uploadImage(runpodId, file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -409,9 +388,7 @@ async function checkTask(taskId, runpodId) {
     return {};
   }
 }
-
 let pollingInterval = null;
-// Poll all tasks with status not "Complete"
 function pollAllTasks() {
   const poll = async () => {
     let tasks = getTaskList();
@@ -432,12 +409,14 @@ function pollAllTasks() {
     if (changed) {
       saveTaskList(tasks);
       renderTasksGrid();
+    } else {
+      // Even if no status change, still update grid to update In Progress badge
+      renderTasksGrid();
     }
   };
   if(pollingInterval) clearInterval(pollingInterval);
   pollingInterval = setInterval(poll, 4500);
 }
-
 function handleSubmit() {
   const submitBtn = document.getElementById("submitBtn");
   const imageFile = document.getElementById("imageInput").files[0];
@@ -457,9 +436,7 @@ function handleSubmit() {
     if (input_image) {
       createTask(prompt, negativePrompt, runpodId, duration, input_image).then(task => {
         if (task.task_id) {
-          // Save thumbnail to persistent storage for reloading after refresh
           if (previewDataUrl) saveThumb(task.task_id, previewDataUrl);
-          // Add to local tasks
           let tasks = getTaskList();
           tasks.unshift({
             taskId: task.task_id,
@@ -485,8 +462,7 @@ function handleSubmit() {
     }
   });
 }
-
-// Modal logic (for completed)
+// Modal
 function openModal(videoUrl) {
   const modal = document.getElementById("videoModal");
   const modalVideo = document.getElementById("modalVideo");
@@ -510,15 +486,7 @@ document.addEventListener("keydown", function(e){
   if(e.key === "Escape"){ closeModal(); }
 });
 
-// Theme
-function toggleTheme() {
-  const cur = document.body.getAttribute('data-theme');
-  document.body.setAttribute('data-theme', cur === 'light' ? 'dark' : 'light');
-}
-
-// Restore on load, refresh polling
 document.addEventListener("DOMContentLoaded", function() {
-  // Restore images for tasks if missing (after reload)
   let list = getTaskList();
   for (let t of list) {
     if (!t.thumbnail && t.taskId) t.thumbnail = getThumb(t.taskId);
