@@ -241,8 +241,12 @@
   <div class="main">
     <div class="container">
       <h2>🎬 Image to Video</h2>
-      <label>Upload Image<input type="file" id="imageInput" accept="image/*"/></label>
+      <div class="center-upload">
+      <label>Upload Image
+        <input type="file" id="imageInput" accept="image/*"/>
+      </label>
       <img id="previewImage" style="display:none;"/>
+    </div>
       <label>Runpod ID<input type="text" id="runpodIdInput" placeholder="Enter runpod ID"/></label>
       <label>Prompt<textarea id="promptInput">Make the person in the image fly up into the sky...</textarea></label>
       <label>Negative Prompt<textarea id="negativePromptInput">bad anatomy, blurry, multiple heads</textarea></label>
