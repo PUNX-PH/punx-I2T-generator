@@ -5,20 +5,159 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Image to Video Generator</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; }
-    .container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    input, select, textarea, button { width: 100%; margin-top: 10px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-    button { background-color: #007BFF; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
-    video, img { width: 100%; margin-top: 10px; }
-    .video-item { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
-    .status { font-style: italic; color: #888; margin-top: 5px; }
-    h3 { margin-top: 40px; }
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #e0f7fa, #ffffff);
+      padding: 20px;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 650px;
+      margin: auto;
+      background: #ffffff;
+      padding: 30px 25px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #007BFF;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 15px;
+      display: block;
+      color: #333;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    select,
+    textarea,
+    button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      transition: border 0.3s ease;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #007BFF;
+      outline: none;
+    }
+
+    button {
+      background-color: #007BFF;
+      color: white;
+      font-weight: bold;
+      border: none;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    img {
+      width: 100%;
+      margin-top: 12px;
+      border-radius: 10px;
+      object-fit: contain;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    video {
+      width: 100%;
+      margin-top: 15px;
+      border-radius: 10px;
+    }
+
+    .video-item {
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+      position: relative;
+    }
+
+    .status {
+      color: #666;
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+
+    h3 {
+      margin-top: 40px;
+      font-size: 20px;
+      color: #007BFF;
+      border-bottom: 2px solid #007BFF33;
+      padding-bottom: 8px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #333;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 9999;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(-10px);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 3px solid #fff;
+      border-top: 3px solid #007BFF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .progress-bar {
+      height: 6px;
+      background-color: #007BFF;
+      width: 0%;
+      border-radius: 6px;
+      margin-top: 5px;
+      transition: width 0.5s ease;
+    }
+
+    @media screen and (max-width: 600px) {
+      .container { padding: 20px 15px; }
+      h2 { font-size: 22px; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Image to Video Generator</h2>
+    <h2>🎥 Image to Video Generator</h2>
 
     <label>Upload Image</label>
     <input type="file" id="imageInput" accept="image/*" />
@@ -48,9 +187,21 @@
     <div id="videoList"></div>
   </div>
 
+  <div id="toast" class="toast"></div>
+
   <script>
     let uploadedFilename = "";
     let currentTaskId = "";
+
+    const toast = document.getElementById("toast");
+
+    function showToast(message, duration = 3000) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      setTimeout(() => {
+        toast.classList.remove("show");
+      }, duration);
+    }
 
     document.getElementById("imageInput").addEventListener("change", (event) => {
       const file = event.target.files[0];
@@ -79,13 +230,14 @@
         const data = await response.json();
         if (response.ok && data.filename) {
           uploadedFilename = data.filename;
+          showToast("✅ Image uploaded!");
           return true;
         } else {
-          alert("Image upload failed: " + (data.message || "Unknown error"));
+          showToast("❌ Upload failed: " + (data.message || "Unknown error"));
         }
       } catch (err) {
         console.error("Upload error:", err);
-        alert("Error uploading image: " + err.message);
+        showToast("❌ Error uploading: " + err.message);
       }
       return false;
     }
@@ -110,34 +262,33 @@
         const data = JSON.parse(text);
 
         if (!response.ok) {
-          alert("Task creation failed: " + (data.message || "Server Error"));
+          showToast("❌ Task creation failed: " + (data.message || "Server Error"));
         }
 
         currentTaskId = data.task_id;
+        showToast("✅ Task created!");
         return data;
       } catch (err) {
         console.error("Create task error:", err);
-        alert("Error creating task: " + err.message);
+        showToast("❌ Error creating task: " + err.message);
         return {};
       }
     }
 
-    async function checkTask(taskId, runpodId, container) {
+    async function checkTask(taskId, runpodId, container, progressBar) {
       try {
         const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
         const data = await res.json();
 
         if (data.status === "Complete") {
-          container.querySelector(".status").textContent = "Complete";
+          container.querySelector(".status").textContent = "✅ Complete";
           container.innerHTML += `
             <video controls src="${data.video_url}"></video>
             <a href="${data.video_url}" download>Download Video</a>
           `;
 
-          // Move to completed section
-          const completedList = document.getElementById("videoList");
           container.parentElement.removeChild(container);
-          completedList.prepend(container);
+          document.getElementById("videoList").prepend(container);
         }
 
         return data;
@@ -155,7 +306,7 @@
       const duration = document.getElementById("durationInput").value;
 
       if (!imageFile || !runpodId) {
-        alert("Please upload an image and enter a runpod ID.");
+        showToast("⚠️ Upload an image and enter Runpod ID.");
         return;
       }
 
@@ -168,12 +319,13 @@
               container.classList.add("video-item");
               container.id = `task-${task.task_id}`;
               container.innerHTML = `
-                <p class="status">Generating...<br><strong>Task ID:</strong> ${task.task_id}</p>
+                <p class="status"><span class="spinner"></span> Generating...<br><strong>Task ID:</strong> ${task.task_id}</p>
+                <div class="progress-bar" id="progress-${task.task_id}"></div>
               `;
               inProgressList.prepend(container);
               pollTask(task.task_id, runpodId, container);
             } else {
-              alert("Task creation did not return a valid taskId.");
+              showToast("⚠️ Task did not return a valid ID.");
             }
           });
         }
@@ -181,10 +333,15 @@
     }
 
     function pollTask(taskId, runpodId, container) {
+      let progress = 0;
+      const bar = container.querySelector(`#progress-${taskId}`);
       const interval = setInterval(async () => {
-        const result = await checkTask(taskId, runpodId, container);
+        progress = Math.min(progress + 5, 95);
+        if (bar) bar.style.width = `${progress}%`;
+        const result = await checkTask(taskId, runpodId, container, bar);
         if (result && result.status === "Complete") {
           clearInterval(interval);
+          if (bar) bar.style.width = "100%";
         }
       }, 5000);
     }
