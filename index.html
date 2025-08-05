@@ -143,6 +143,52 @@
     .tab-content {
       display: none;
     }
+    .video-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .video-thumb {
+      flex: 0 0 200px;
+      cursor: pointer;
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .video-thumb video {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left:0; top:0;
+      width: 100%; height:100%;
+      background-color: rgba(0,0,0,0.8);
+    }
+    .modal-content {
+      position: absolute;
+      top:50%; left:50%;
+      transform: translate(-50%, -50%);
+      max-width: 90%;
+      max-height: 80%;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .modal-content video {
+      width: 100%;
+      height: auto;
+    }
+    .close {
+      position: absolute;
+      top:5px; right:15px;
+      color: white;
+      font-size: 30px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body data-theme="dark">
@@ -173,8 +219,15 @@
           <button class="tab-btn" onclick="showTab('videoList')">Completed</button>
         </div>
         <div id="inProgressList" class="tab-content"></div>
-        <div id="videoList" class="tab-content" style="display: none;"></div>
+        <div id="videoList" class="tab-content video-grid" style="display: none;"></div>
       </div>
+    </div>
+  </div>
+
+  <div id="videoModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <video id="modalVideo" controls></video>
     </div>
   </div>
 
@@ -259,15 +312,16 @@
 
         if (data.status === "Complete") {
           container.querySelector(".status").textContent = "Complete";
-          container.innerHTML += `
-            <video controls src="${data.video_url}"></video>
-            <a href="${data.video_url}" download>Download Video</a>
-          `;
-
-          // Move to completed section
           const completedList = document.getElementById("videoList");
+
+          // Create video thumbnail
+          const thumb = document.createElement("div");
+          thumb.classList.add("video-thumb");
+          thumb.innerHTML = `<video src="${data.video_url}"></video>`;
+          thumb.addEventListener("click", () => openModal(data.video_url));
+
+          completedList.prepend(thumb);
           container.parentElement.removeChild(container);
-          completedList.prepend(container);
         }
 
         return data;
@@ -315,6 +369,21 @@
           clearInterval(interval);
         }
       }, 5000);
+    }
+
+    function openModal(videoUrl) {
+      const modal = document.getElementById("videoModal");
+      const modalVideo = document.getElementById("modalVideo");
+      modalVideo.src = videoUrl;
+      modal.style.display = "block";
+    }
+
+    function closeModal() {
+      const modal = document.getElementById("videoModal");
+      const modalVideo = document.getElementById("modalVideo");
+      modal.style.display = "none";
+      modalVideo.pause();
+      modalVideo.src = "";
     }
 
     function toggleTheme() {
