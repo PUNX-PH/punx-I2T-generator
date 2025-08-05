@@ -111,7 +111,13 @@
       border: none;
       cursor: pointer;
     }
-    button.submit:hover {
+    button.submit:disabled {
+      background: #808080b0;
+      color: #eee;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    button.submit:hover:not(:disabled) {
       background: #e65500;
     }
     #previewImage {
@@ -134,14 +140,17 @@
       background: var(--panel-color);
       color: var(--text-color);
       border: 2px solid var(--neon-blue);
-      padding: 10px;
+      padding: 18px 10px;
       cursor: pointer;
-      border-radius: 8px;
+      border-radius: 20px;
       font-weight: bold;
+      font-size: 1.4em;
+      transition: background 0.3s, color 0.3s, border-color 0.3s;
     }
     .tab-btn.active {
       background: var(--neon-blue);
       color: var(--deep-purple);
+      border-color: var(--neon-blue);
     }
     .tab-content {
       display: none;
@@ -149,42 +158,52 @@
     .tab-content.active {
       display: block;
     }
+    #inProgressMessage {
+      text-align: center;
+      margin: 48px 0;
+      font-size: 20px;
+      color: var(--neon-blue);
+      min-height: 32px;
+      word-break: break-all;
+      line-height: 1.7;
+    }
     .video-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 30px;
     }
     .video-thumb {
       cursor: pointer;
       background: #000;
       border: 2px solid var(--neon-blue);
       position: relative;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 0 12px #00e5ff44;
-      transition: transform 0.15s;
+      box-shadow: 0 0 15px #00e5ff44;
+      transition: transform 0.15s, box-shadow 0.25s, border-color 0.2s;
     }
     .video-thumb:hover {
-      transform: scale(1.03);
-      box-shadow: 0 0 16px #ff6e0044;
+      transform: scale(1.045);
+      box-shadow: 0 0 22px #ff6e0044;
       border-color: var(--flame-orange);
     }
     .video-thumb video {
       width: 100%;
-      height: 160px;
+      height: 230px;
       object-fit: cover;
-      border-radius: 8px 8px 0 0;
+      border-radius: 12px 12px 0 0;
       background: #000;
       display: block;
     }
     .video-caption {
-      padding: 8px 12px;
-      font-size: 14px;
-      background: #111a;
+      padding: 12px 12px;
+      font-size: 20px;
+      background: #111c;
       color: #fff;
       text-align: center;
-      border-radius: 0 0 8px 8px;
+      border-radius: 0 0 12px 12px;
       word-break: break-all;
+      font-family: 'Orbitron', sans-serif;
     }
     .modal {
       display: none;
@@ -213,10 +232,9 @@
     }
     .modal-content video {
       width: 100%;
-      height: auto;
+      max-height: 80vh;
       display: block;
       background: #000;
-      max-height: 80vh;
     }
     .close {
       position: absolute;
@@ -230,6 +248,12 @@
     @keyframes fade-in {
       from { opacity: 0 }
       to { opacity: 1 }
+    }
+    @media (max-width: 700px) {
+      .main { padding:10px; margin-left: 90px; width: calc(100% - 90px);}
+      .sidebar { width: 90px; padding: 8px;}
+      .tab-btn { font-size: 0.9em; padding: 12px 6px;}
+      .video-grid { grid-template-columns: 1fr;}
     }
   </style>
 </head>
@@ -252,14 +276,16 @@
       <label>Prompt<textarea id="promptInput">Make the person in the image fly up into the sky...</textarea></label>
       <label>Negative Prompt<textarea id="negativePromptInput">bad anatomy, blurry, multiple heads</textarea></label>
       <label>Duration<select id="durationInput"><option value="5">5 seconds</option><option value="10">10 seconds</option></select></label>
-      <button class="submit" onclick="handleSubmit()">Generate Video</button>
+      <button id="submitBtn" class="submit" onclick="handleSubmit()">Generate Video</button>
 
       <div class="tabs">
         <div class="tab-buttons">
           <button class="tab-btn active" onclick="showTab('inProgressList', this)">In Progress</button>
           <button class="tab-btn" onclick="showTab('videoList', this)">Completed</button>
         </div>
-        <div id="inProgressList" class="tab-content active"></div>
+        <div id="inProgressList" class="tab-content active">
+          <div id="inProgressMessage"></div>
+        </div>
         <div id="videoList" class="tab-content video-grid"></div>
       </div>
     </div>
@@ -270,11 +296,10 @@
       <video id="modalVideo" controls autoplay></video>
     </div>
   </div>
-  <script>
+<script>
     let uploadedFilename = "";
-    const completedKey = "completedVideos"; // For local storage simulation
+    const completedKey = "completedVideos";
 
-    // Display uploaded image as preview
     document.getElementById("imageInput").addEventListener("change", (event) => {
       const file = event.target.files[0];
       if (file) {
@@ -287,29 +312,16 @@
         reader.readAsDataURL(file);
       }
     });
-
-    // Simulate persistent completed videos using localStorage, ERROR-PROOF!
     function saveCompletedVideo(taskId, videoData) {
       let arr = [];
-      try {
-        arr = JSON.parse(localStorage.getItem(completedKey)) || [];
-      } catch(e){ arr = []; }
-      arr.unshift({ ...videoData, taskId }); // latest first
+      try { arr = JSON.parse(localStorage.getItem(completedKey)) || []; } catch(e){ arr = []; }
+      arr.unshift({ ...videoData, taskId });
       localStorage.setItem(completedKey, JSON.stringify(arr));
     }
     function loadCompletedVideos() {
-      try {
-        return JSON.parse(localStorage.getItem(completedKey)) || [];
-      } catch(e){
-        return [];
-      }
+      try { return JSON.parse(localStorage.getItem(completedKey)) || [];
+      } catch(e){ return []; }
     }
-    function removeCompletedByTaskId(taskId) {
-      let arr = loadCompletedVideos().filter(item => item.taskId !== taskId);
-      localStorage.setItem(completedKey, JSON.stringify(arr));
-    }
-
-    // Render a completed video to grid
     function addVideoToCompletedGrid(video_url, taskId = "", prompt = "") {
       const completedList = document.getElementById("videoList");
       const thumb = document.createElement("div");
@@ -321,8 +333,6 @@
       thumb.addEventListener("click", () => openModal(video_url));
       completedList.prepend(thumb);
     }
-
-    // ---- API Handling ----
     async function uploadImage(runpodId, file) {
       const formData = new FormData();
       formData.append("file", file);
@@ -339,7 +349,6 @@
         }
         alert("Image upload failed: " + (data.message || "Unknown error"));
       } catch (err) {
-        console.error("Upload error:", err);
         alert("Error uploading image: " + err.message);
       }
       return false;
@@ -358,8 +367,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
-        const text = await response.text();
-        const data = JSON.parse(text);
+        const data = await response.json();
         if (!response.ok) {
           alert("Task creation failed: " + (data.message || "Server Error"));
         }
@@ -369,80 +377,81 @@
         return {};
       }
     }
-    async function checkTask(taskId, runpodId, container, prompt = "") {
+    async function checkTask(taskId, runpodId, prompt = "") {
       try {
         const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
         const data = await res.json();
-        const statusEl = container.querySelector(".status");
-        if (data.status === "Complete") {
-          if(statusEl) statusEl.textContent = "Complete";
-          // Move to completed, save & render
-          if(data.video_url) {
-            // Save for future display
-            saveCompletedVideo(taskId, { video_url: data.video_url, prompt });
-            addVideoToCompletedGrid(data.video_url, taskId, prompt);
-          }
-          // Remove from "In Progress"
-          container.parentElement && container.parentElement.removeChild(container);
-        }
-        if (statusEl) {
-          statusEl.textContent = data.status || "Processing...";
+        if (data.status === "Complete" && data.video_url) {
+          saveCompletedVideo(taskId, { video_url: data.video_url, prompt });
+          addVideoToCompletedGrid(data.video_url, taskId, prompt);
+          updateInProgressMessage("");
+        } else if (data.status) {
+          updateInProgressMessage(`Task ID: <b>${taskId}</b> <br>Status: ${data.status}`);
         }
         return data;
       } catch (err) {
-        console.error("Error checking task:", err);
+        updateInProgressMessage("");
         return { status: "Error" };
       }
     }
-
+    let pollingInterval = null;
     function handleSubmit() {
+      const submitBtn = document.getElementById("submitBtn");
       const imageFile = document.getElementById("imageInput").files[0];
       const runpodId = document.getElementById("runpodIdInput").value;
       const prompt = document.getElementById("promptInput").value;
       const negativePrompt = document.getElementById("negativePromptInput").value;
       const duration = document.getElementById("durationInput").value;
+
       if (!imageFile || !runpodId) {
         alert("Please upload an image and enter a runpod ID.");
         return;
       }
+      submitBtn.textContent = "Processing...";
+      submitBtn.disabled = true;
+
       uploadImage(runpodId, imageFile).then(success => {
         if (success) {
           createTask(prompt, negativePrompt, runpodId, duration).then(task => {
             if (task.task_id) {
-              const inProgressList = document.getElementById("inProgressList");
-              const container = document.createElement("div");
-              container.classList.add("video-item");
-              container.id = `task-${task.task_id}`;
-              container.innerHTML = `<p class="status">Generating...<br><strong>Task ID:</strong> ${task.task_id}</p>`;
-              inProgressList.prepend(container);
-              pollTask(task.task_id, runpodId, container, prompt);
-              showTab('inProgressList', document.querySelector(".tab-btn[onclick*='inProgressList']")); // Show progress tab
+              // Show in-progress taskId ONLY as text message
+              showTab('inProgressList', document.querySelector(".tab-btn[onclick*='inProgressList']"));
+              updateInProgressMessage(`Task ID: <b>${task.task_id}</b> <br>Status: Generating...`);
+
+              if(pollingInterval) clearInterval(pollingInterval);
+              pollingInterval = setInterval(async () => {
+                const result = await checkTask(task.task_id, runpodId, prompt);
+                if (result && result.status === "Complete") {
+                  clearInterval(pollingInterval);
+                  submitBtn.textContent = "Generate Video";
+                  submitBtn.disabled = false;
+                  updateInProgressMessage("");
+                }
+              }, 5000);
+              // After queueing, enable button back (do not wait for video completion)
+              submitBtn.textContent = "Generate Video";
+              submitBtn.disabled = false;
             } else {
               alert("Task creation did not return a valid taskId.");
+              submitBtn.textContent = "Generate Video";
+              submitBtn.disabled = false;
             }
           });
+        } else {
+          submitBtn.textContent = "Generate Video";
+          submitBtn.disabled = false;
         }
       });
     }
-
-    function pollTask(taskId, runpodId, container, prompt = "") {
-      const interval = setInterval(async () => {
-        const result = await checkTask(taskId, runpodId, container, prompt);
-        if (result && result.status === "Complete") {
-          clearInterval(interval);
-        }
-      }, 5000);
+    function updateInProgressMessage(html) {
+      document.getElementById("inProgressMessage").innerHTML = html||"";
     }
-
-    // ---- Tab UI ----
     function showTab(tabId, btnRef = null) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
       document.getElementById(tabId).classList.add('active');
       if(btnRef) btnRef.classList.add('active');
     }
-
-    // ---- Modal ----
     function openModal(videoUrl) {
       const modal = document.getElementById("videoModal");
       const modalVideo = document.getElementById("modalVideo");
@@ -463,27 +472,19 @@
       }
     }
     document.addEventListener("keydown", function(e){
-      if(e.key === "Escape"){
-        closeModal();
-      }
-    })
-
+      if(e.key === "Escape"){ closeModal(); }
+    });
     function toggleTheme() {
       const cur = document.body.getAttribute('data-theme');
       document.body.setAttribute('data-theme', cur === 'light' ? 'dark' : 'light');
     }
-
-    // ----- INITIAL LOAD ------
-    // Load saved completed videos on page load
     document.addEventListener("DOMContentLoaded", function() {
-      // Load Completed Videos grid from prev sessions (or backend if possible)
       const completedArr = loadCompletedVideos();
       for(const obj of completedArr) {
         addVideoToCompletedGrid(obj.video_url, obj.taskId, obj.prompt);
       }
-      // Ensure default tab
       showTab('inProgressList', document.querySelector(".tab-btn[onclick*='inProgressList']"));
     });
-  </script>
+</script>
 </body>
 </html>
