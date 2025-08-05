@@ -173,7 +173,6 @@
     .badge-queue     { background: var(--queue-badge); color: #222;}
     .badge-inprog    { background: var(--progress-badge);}
     .badge-completed { background: var(--complete-badge); color: #222;}
-
     .modal {
       display: none;
       position: fixed;
@@ -271,32 +270,44 @@ function renderTasksGrid() {
     grid.innerHTML = '<div style="color:#888;font-size:20px;padding:20px 0">No tasks yet.</div>';
     return;
   }
-  grid.innerHTML = '';
-  // Find PENDING, separate others for badge logic
-  const pendingIdxs = [];
+  // Compute which task is in progress
+  let idxInProgress = -1;
   for(let i=0;i<tasks.length;i++){
-    if(tasks[i].status === "Pending" || tasks[i].status === "Processing") pendingIdxs.push(i);
+    if(tasks[i].status === "Pending" || tasks[i].status === "Processing") {
+      idxInProgress = i; break;
+    }
   }
-  // If there is at least one Pending, set first to Processing for badge
-  if(pendingIdxs.length>0) {
-    let firstPending = pendingIdxs[0];
-    if(tasks[firstPending].status === "Pending") tasks[firstPending].__showProg = true; else tasks[firstPending].__showProg = false;
-    for(let j=1;j<pendingIdxs.length;j++) tasks[pendingIdxs[j]].__showProg = false;
-  }
-  for (let i=0;i<tasks.length;i++) {
-    grid.appendChild(createTaskCard(tasks[i]));
+  grid.innerHTML = '';
+  for (let i = 0; i < tasks.length; i++) {
+    // Enhance only for rendering, do not save __showProg
+    let showQueue = false, showProg = false;
+    if (tasks[i].status === "Complete") {
+      showProg = false; showQueue = false;
+    } else if (i === idxInProgress) {
+      showProg = true;
+      showQueue = false;
+    } else {
+      showProg = false;
+      showQueue = true;
+    }
+    grid.appendChild(createTaskCard(tasks[i], showProg, showQueue));
   }
 }
 
 // Create rectangle UI per task with new badge logic
-function createTaskCard(t) {
+function createTaskCard(t, showProg, showQueue) {
   const div = document.createElement("div");
   // Badge text/color logic
   let badgeText = "", badgeClass = "";
-  if (t.status === "Complete")      badgeText = "Completed",   badgeClass = "badge-completed";
-  else if (t.status === "Processing" || t.__showProg) badgeText = "In Progress", badgeClass = "badge-inprog";
-  else                               badgeText = "In Queue",      badgeClass = "badge-queue";
-  // For completed, show the video; otherwise thumbnail image.
+  if (t.status === "Complete") {
+    badgeText = "Completed",   badgeClass = "badge-completed";
+  } else if (showProg) {
+    badgeText = "In Progress"; badgeClass = "badge-inprog";
+  } else if (showQueue) {
+    badgeText = "In Queue"; badgeClass = "badge-queue";
+  } else {
+    badgeText = ""; badgeClass = "";
+  }
   let content = `
     <div class="task-badges">
       <span class="task-badge ${badgeClass}">${badgeText}</span>
@@ -312,7 +323,6 @@ function createTaskCard(t) {
   `;
   div.innerHTML = content;
   div.className = `task-card${t.status === "Complete" ? " completed" : ""}`;
-  // Video preview modal for completed only
   if(t.status==="Complete" && t.video_url) {
     div.style.cursor = 'pointer';
     div.onclick = ()=>openModal(t.video_url);
@@ -320,7 +330,6 @@ function createTaskCard(t) {
   return div;
 }
 
-// Image selection, store as previewDataUrl
 let previewDataUrl = "";
 document.getElementById("imageInput").addEventListener("change", (event) => {
   const file = event.target.files[0];
@@ -410,7 +419,6 @@ function pollAllTasks() {
       saveTaskList(tasks);
       renderTasksGrid();
     } else {
-      // Even if no status change, still update grid to update In Progress badge
       renderTasksGrid();
     }
   };
@@ -438,7 +446,7 @@ function handleSubmit() {
         if (task.task_id) {
           if (previewDataUrl) saveThumb(task.task_id, previewDataUrl);
           let tasks = getTaskList();
-          tasks.unshift({
+          tasks.push({ // first come, first serve: push at end
             taskId: task.task_id,
             prompt,
             runpodId,
