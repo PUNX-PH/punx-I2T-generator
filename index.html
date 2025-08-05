@@ -285,7 +285,7 @@ function renderAllTasks() {
     else queue.push(t);
   }
   renderTasksGrid(queue, "tasksGrid");
-  renderTasksGrid(complete, "completedGrid", true);
+  renderTasksGrid(complete.slice().reverse(), "completedGrid", true); // MOST RECENT COMPLETE FIRST
 }
 
 function renderTasksGrid(tasks, gridId, completedTab) {
