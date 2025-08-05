@@ -145,12 +145,11 @@
       display: none;
     }
     .video-grid {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 15px;
     }
     .video-thumb {
-      flex: 0 0 200px;
       cursor: pointer;
       position: relative;
       border-radius: 8px;
