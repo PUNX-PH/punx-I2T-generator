@@ -158,14 +158,19 @@
     .tab-content.active {
       display: block;
     }
-    #inProgressMessage {
+    #inProgressTasks {
       text-align: center;
-      margin: 48px 0;
-      font-size: 20px;
+      margin: 40px 0 0 0;
+      font-size: 22px;
       color: var(--neon-blue);
       min-height: 32px;
       word-break: break-all;
       line-height: 1.7;
+    }
+    .task-status {
+      font-size: 24px; color:var(--neon-blue);margin-top:18px;
+      margin-bottom:40px;
+      font-family:'Orbitron',sans-serif;
     }
     .video-grid {
       display: grid;
@@ -284,7 +289,7 @@
           <button class="tab-btn" onclick="showTab('videoList', this)">Completed</button>
         </div>
         <div id="inProgressList" class="tab-content active">
-          <div id="inProgressMessage"></div>
+          <div id="inProgressTasks"></div>
         </div>
         <div id="videoList" class="tab-content video-grid"></div>
       </div>
@@ -299,6 +304,36 @@
 <script>
     let uploadedFilename = "";
     const completedKey = "completedVideos";
+    const inProgressKey = "pendingTasks";
+    // pendingTasks: [{taskId, status, prompt, runpodId}]
+    // completedVideos: [{taskId, video_url, prompt}]
+    function getPendingTasks() {
+      try {
+        return JSON.parse(localStorage.getItem(inProgressKey)) || [];
+      } catch (e) { return []; }
+    }
+    function setPendingTasks(arr) {
+      localStorage.setItem(inProgressKey, JSON.stringify(arr));
+    }
+    function addPendingTask(obj) {
+      const arr = getPendingTasks();
+      arr.unshift(obj);
+      setPendingTasks(arr);
+    }
+    function removePendingTask(taskId) {
+      setPendingTasks(getPendingTasks().filter(x => x.taskId !== taskId));
+    }
+
+    function saveCompletedVideo(taskId, videoData) {
+      let arr = [];
+      try { arr = JSON.parse(localStorage.getItem(completedKey)) || []; } catch(e){ arr = []; }
+      arr.unshift({ ...videoData, taskId });
+      localStorage.setItem(completedKey, JSON.stringify(arr));
+    }
+    function loadCompletedVideos() {
+      try { return JSON.parse(localStorage.getItem(completedKey)) || [];
+      } catch(e){ return []; }
+    }
 
     document.getElementById("imageInput").addEventListener("change", (event) => {
       const file = event.target.files[0];
@@ -312,16 +347,19 @@
         reader.readAsDataURL(file);
       }
     });
-    function saveCompletedVideo(taskId, videoData) {
-      let arr = [];
-      try { arr = JSON.parse(localStorage.getItem(completedKey)) || []; } catch(e){ arr = []; }
-      arr.unshift({ ...videoData, taskId });
-      localStorage.setItem(completedKey, JSON.stringify(arr));
+
+    function renderPendingTasksList() {
+      const container = document.getElementById("inProgressTasks");
+      const arr = getPendingTasks();
+      if (arr.length === 0) {
+        container.innerHTML = `<div style="color:#888;font-size:20px;padding:20px 0">No pending tasks.</div>`;
+        return;
+      }
+      container.innerHTML = arr.map(
+        t => `<div class="task-status">Task ID: ${t.taskId}<br>Status: ${t.status || 'Pending'}</div>`
+      ).join('');
     }
-    function loadCompletedVideos() {
-      try { return JSON.parse(localStorage.getItem(completedKey)) || [];
-      } catch(e){ return []; }
-    }
+
     function addVideoToCompletedGrid(video_url, taskId = "", prompt = "") {
       const completedList = document.getElementById("videoList");
       const thumb = document.createElement("div");
@@ -333,6 +371,7 @@
       thumb.addEventListener("click", () => openModal(video_url));
       completedList.prepend(thumb);
     }
+
     async function uploadImage(runpodId, file) {
       const formData = new FormData();
       formData.append("file", file);
@@ -353,6 +392,7 @@
       }
       return false;
     }
+
     async function createTask(prompt, negativePrompt, runpodId, duration) {
       const body = {
         prompt,
@@ -377,24 +417,47 @@
         return {};
       }
     }
+
     async function checkTask(taskId, runpodId, prompt = "") {
       try {
         const res = await fetch(`https://punx-i2-t-generator.vercel.app/api/get-task?taskId=${taskId}&runpod_id=${runpodId}`);
         const data = await res.json();
+        let ptasks = getPendingTasks();
+        let idx = ptasks.findIndex(t => t.taskId === taskId);
+        // Update status
+        if (idx !== -1) ptasks[idx].status = data.status || "Pending";
+        setPendingTasks(ptasks);
+        renderPendingTasksList();
         if (data.status === "Complete" && data.video_url) {
           saveCompletedVideo(taskId, { video_url: data.video_url, prompt });
           addVideoToCompletedGrid(data.video_url, taskId, prompt);
-          updateInProgressMessage("");
-        } else if (data.status) {
-          updateInProgressMessage(`Task ID: <b>${taskId}</b> <br>Status: ${data.status}`);
+          removePendingTask(taskId);
+          renderPendingTasksList();
+          return true;
         }
-        return data;
+        return false;
       } catch (err) {
-        updateInProgressMessage("");
-        return { status: "Error" };
+        return false;
       }
     }
+    // Polling for all in-progress tasks
+    function pollAllTasks() {
+      let pollInterval = setInterval(async () => {
+        let ptasks = getPendingTasks();
+        if (!ptasks.length) return; // nothing to do
+        for (let t of ptasks) {
+          await checkTask(t.taskId, t.runpodId, t.prompt);
+        }
+      }, 5000);
+      return pollInterval;
+    }
+    // Manage only one polling interval at a time
     let pollingInterval = null;
+    function refreshPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = pollAllTasks();
+    }
+
     function handleSubmit() {
       const submitBtn = document.getElementById("submitBtn");
       const imageFile = document.getElementById("imageInput").files[0];
@@ -414,28 +477,15 @@
         if (success) {
           createTask(prompt, negativePrompt, runpodId, duration).then(task => {
             if (task.task_id) {
-              // Show in-progress taskId ONLY as text message
+              addPendingTask({ taskId: task.task_id, status: "Pending", prompt, runpodId });
+              renderPendingTasksList();
               showTab('inProgressList', document.querySelector(".tab-btn[onclick*='inProgressList']"));
-              updateInProgressMessage(`Task ID: <b>${task.task_id}</b> <br>Status: Generating...`);
-
-              if(pollingInterval) clearInterval(pollingInterval);
-              pollingInterval = setInterval(async () => {
-                const result = await checkTask(task.task_id, runpodId, prompt);
-                if (result && result.status === "Complete") {
-                  clearInterval(pollingInterval);
-                  submitBtn.textContent = "Generate Video";
-                  submitBtn.disabled = false;
-                  updateInProgressMessage("");
-                }
-              }, 5000);
-              // After queueing, enable button back (do not wait for video completion)
-              submitBtn.textContent = "Generate Video";
-              submitBtn.disabled = false;
+              refreshPolling();
             } else {
               alert("Task creation did not return a valid taskId.");
-              submitBtn.textContent = "Generate Video";
-              submitBtn.disabled = false;
             }
+            submitBtn.textContent = "Generate Video";
+            submitBtn.disabled = false;
           });
         } else {
           submitBtn.textContent = "Generate Video";
@@ -443,9 +493,7 @@
         }
       });
     }
-    function updateInProgressMessage(html) {
-      document.getElementById("inProgressMessage").innerHTML = html||"";
-    }
+
     function showTab(tabId, btnRef = null) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -479,11 +527,14 @@
       document.body.setAttribute('data-theme', cur === 'light' ? 'dark' : 'light');
     }
     document.addEventListener("DOMContentLoaded", function() {
+      // Load Completed Videos grid from prev sessions (or backend if possible)
       const completedArr = loadCompletedVideos();
       for(const obj of completedArr) {
         addVideoToCompletedGrid(obj.video_url, obj.taskId, obj.prompt);
       }
+      renderPendingTasksList();
       showTab('inProgressList', document.querySelector(".tab-btn[onclick*='inProgressList']"));
+      refreshPolling();
     });
 </script>
 </body>
