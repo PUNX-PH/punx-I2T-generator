@@ -22,6 +22,7 @@
       --panel-color: #ffffff;
       --text-color: var(--text-dark);
     }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       display: flex;
@@ -40,6 +41,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      box-sizing: border-box;
     }
     .brand {
       font-size: 20px;
@@ -65,11 +67,10 @@
       cursor: pointer;
     }
     .main {
-      margin-left: 240px;
+      margin-left: 220px;
       padding: 40px;
-      width: calc(100% - 240px);
+      width: calc(100% - 220px);
       max-width: 1000px;
-      box-sizing: border-box;
     }
     .container {
       background: var(--panel-color);
@@ -96,6 +97,10 @@
       background: transparent;
       color: inherit;
     }
+    input[type="file"] {
+      padding: 4px;
+      background: var(--panel-color);
+    }
     button.submit {
       background: var(--flame-orange);
       color: white;
@@ -107,15 +112,12 @@
     button.submit:hover {
       background: #e65500;
     }
-    img, video {
-      width: 100%;
-      border-radius: 8px;
+    #previewImage {
+      width: 200px;
+      height: auto;
       margin-top: 10px;
-    }
-    .video-item {
-      margin-top: 25px;
-      padding-top: 15px;
-      border-top: 1px solid #444;
+      display: block;
+      border-radius: 6px;
     }
     .tabs {
       margin-top: 40px;
@@ -134,7 +136,6 @@
       cursor: pointer;
       border-radius: 8px;
       font-weight: bold;
-      transition: background 0.3s, color 0.3s;
     }
     .tab-btn.active {
       background: var(--neon-blue);
@@ -164,13 +165,13 @@
       display: none;
       position: fixed;
       z-index: 1000;
-      left:0; top:0;
-      width: 100%; height:100%;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
       background-color: rgba(0,0,0,0.8);
     }
     .modal-content {
       position: absolute;
-      top:50%; left:50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       max-width: 90%;
       max-height: 80%;
@@ -184,10 +185,11 @@
     }
     .close {
       position: absolute;
-      top:5px; right:15px;
+      top: 5px; right: 15px;
       color: white;
       font-size: 30px;
       cursor: pointer;
+      z-index: 1001;
     }
   </style>
 </head>
