@@ -292,11 +292,9 @@
   </div>
 <script>
 const TASKS_KEY = "tasks2";
-const THUMB_KEY_PREFIX = "thumb_2_";
+
 function saveTaskList(tasks) { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); }
 function getTaskList()       { try { return JSON.parse(localStorage.getItem(TASKS_KEY)) || []; } catch { return []; } }
-function saveThumb(taskId, imgDataUrl) { localStorage.setItem(THUMB_KEY_PREFIX+taskId, imgDataUrl); }
-function getThumb(taskId) { return localStorage.getItem(THUMB_KEY_PREFIX+taskId); }
 function renderAllTasks() {
   const tasks = getTaskList();
   let queue = [], complete = [];
@@ -474,7 +472,6 @@ function handleSubmit() {
     if (input_image) {
       createTask(prompt, negativePrompt, runpodId, duration, input_image).then(task => {
         if (task.task_id) {
-          if (previewDataUrl) saveThumb(task.task_id, previewDataUrl);
           let tasks = getTaskList();
           tasks.push({ // first come, first serve: push at end
             taskId: task.task_id,
@@ -531,11 +528,6 @@ function showTab(tabId, btnRef) {
   btnRef.classList.add('active');
 }
 document.addEventListener("DOMContentLoaded", function() {
-  let list = getTaskList();
-  for (let t of list) {
-    if (!t.thumbnail && t.taskId) t.thumbnail = getThumb(t.taskId);
-  }
-  saveTaskList(list);
   renderAllTasks();
   pollAllTasks();
 });
